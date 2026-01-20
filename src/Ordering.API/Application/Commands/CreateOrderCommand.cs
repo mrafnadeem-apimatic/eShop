@@ -1,4 +1,5 @@
-﻿namespace eShop.Ordering.API.Application.Commands;
+﻿#nullable enable
+namespace eShop.Ordering.API.Application.Commands;
 
 // DDD and CQRS patterns comment: Note that it is recommended to implement immutable Commands
 // In this case, its immutability is achieved by having all the setters as private
@@ -20,43 +21,46 @@ public class CreateOrderCommand
     private readonly List<OrderItemDTO> _orderItems;
 
     [DataMember]
-    public string UserId { get; private set; }
+    public string UserId { get; private set; } = string.Empty;
 
     [DataMember]
-    public string UserName { get; private set; }
+    public string UserName { get; private set; } = string.Empty;
 
     [DataMember]
-    public string City { get; private set; }
+    public string City { get; private set; } = string.Empty;
 
     [DataMember]
-    public string Street { get; private set; }
+    public string Street { get; private set; } = string.Empty;
 
     [DataMember]
-    public string State { get; private set; }
+    public string State { get; private set; } = string.Empty;
 
     [DataMember]
-    public string Country { get; private set; }
+    public string Country { get; private set; } = string.Empty;
 
     [DataMember]
-    public string ZipCode { get; private set; }
+    public string ZipCode { get; private set; } = string.Empty;
 
     [DataMember]
-    public string CardNumber { get; private set; }
+    public string CardNumber { get; private set; } = string.Empty;
 
     [DataMember]
-    public string CardHolderName { get; private set; }
+    public string CardHolderName { get; private set; } = string.Empty;
 
     [DataMember]
     public DateTime CardExpiration { get; private set; }
 
     [DataMember]
-    public string CardSecurityNumber { get; private set; }
+    public string CardSecurityNumber { get; private set; } = string.Empty;
 
     [DataMember]
     public int CardTypeId { get; private set; }
 
     [DataMember]
     public IEnumerable<OrderItemDTO> OrderItems => _orderItems;
+
+    [DataMember]
+    public string? PayPalOrderId { get; private set; }
 
     public CreateOrderCommand()
     {
@@ -65,7 +69,7 @@ public class CreateOrderCommand
 
     public CreateOrderCommand(List<BasketItem> basketItems, string userId, string userName, string city, string street, string state, string country, string zipcode,
         string cardNumber, string cardHolderName, DateTime cardExpiration,
-        string cardSecurityNumber, int cardTypeId)
+        string cardSecurityNumber, int cardTypeId, string? payPalOrderId = null)
     {
         _orderItems = basketItems.ToOrderItemsDTO().ToList();
         UserId = userId;
@@ -80,6 +84,7 @@ public class CreateOrderCommand
         CardExpiration = cardExpiration;
         CardSecurityNumber = cardSecurityNumber;
         CardTypeId = cardTypeId;
+        PayPalOrderId = payPalOrderId;
     }
 }
 

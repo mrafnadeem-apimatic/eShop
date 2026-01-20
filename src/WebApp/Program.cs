@@ -1,5 +1,6 @@
 ﻿using eShop.WebApp.Components;
 using eShop.ServiceDefaults;
+using eShop.WebApp.PayPal;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,9 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+
+// PayPal OAuth endpoints (Log in with PayPal)
+app.MapPayPalEndpoints();
 
 app.MapForwarder("/product-images/{id}", "https+http://catalog-api", "/api/catalog/items/{id}/pic");
 

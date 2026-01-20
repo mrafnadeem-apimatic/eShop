@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿#nullable enable
+using System.ComponentModel.DataAnnotations;
 
 namespace eShop.Ordering.Domain.AggregatesModel.OrderAggregate;
 
@@ -34,6 +35,8 @@ public class Order
 
     public int? PaymentId { get; private set; }
 
+    public string? PayPalOrderId { get; private set; }
+
     public static Order NewDraft()
     {
         var order = new Order
@@ -45,15 +48,20 @@ public class Order
 
     protected Order()
     {
+        // Initialize non-nullable properties with default values to satisfy CS8618
         _orderItems = new List<OrderItem>();
         _isDraft = false;
+        Address = default!; // Suppress CS8618, will be set by derived constructors or EF
+        Buyer = default!;   // Suppress CS8618, will be set by derived constructors or EF
+        Description = string.Empty; // Provide a default non-null value
     }
 
     public Order(string userId, string userName, Address address, int cardTypeId, string cardNumber, string cardSecurityNumber,
-            string cardHolderName, DateTime cardExpiration, int? buyerId = null, int? paymentMethodId = null) : this()
+            string cardHolderName, DateTime cardExpiration, int? buyerId = null, int? paymentMethodId = null, string? payPalOrderId = null) : this()
     {
         BuyerId = buyerId;
         PaymentId = paymentMethodId;
+        PayPalOrderId = payPalOrderId;
         OrderStatus = OrderStatus.Submitted;
         OrderDate = DateTime.UtcNow;
         Address = address;

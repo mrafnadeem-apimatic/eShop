@@ -51,9 +51,22 @@
                 </div>
             </div>
             <div class="form-section">
+                <p class="payment-note">
+                    Your payment will be securely processed via PayPal.
+                </p>
+                @if (paymentCompleted)
+                {
+                    <p class="payment-success">
+                        Your PayPal authorization was successful. You can now place your order.
+                    </p>
+                }
                 <div class="form-buttons">
+                    <a href="/paypal/pay" class="button button-secondary">Pay with PayPal</a>
                     <a href="cart" class="button button-secondary"><img role="presentation" src="icons/arrow-left.svg" />Back to the shopping bag</a>
-                    <button class="button button-primary" type="submit">Place order</button>
+                    @if (paymentCompleted)
+                    {
+                        <button class="button button-primary" type="submit">Place order</button>
+                    }
                 </div>
             </div>
         </div>
@@ -64,6 +77,7 @@
 @code {
     private EditContext editContext = default!;
     private ValidationMessageStore extraMessages = default!;
+    private bool paymentCompleted;
 
     [SupplyParameterFromForm]
     public BasketCheckoutInfo Info { get; set; } = default!;
@@ -80,6 +94,20 @@
 
         editContext = new EditContext(Info!);
         extraMessages = new ValidationMessageStore(editContext);
+
+        // Detect if user is returning from PayPal with an approved payment
+        var paid = HttpContext.Request.Query["paid"].ToString();
+        var paypalOrderId = HttpContext.Request.Query["paypalOrderId"].ToString();
+
+        paymentCompleted = string.Equals(paid, "1", StringComparison.Ordinal)
+                           && !string.IsNullOrWhiteSpace(paypalOrderId);
+
+        // Only associate the PayPal order ID with this checkout when the approval
+        // flag is present and we consider the payment completed.
+        if (paymentCompleted)
+        {
+            Info!.PayPalOrderId = paypalOrderId;
+        }
     }
 
     private void PopulateFormWithDefaultInfo()

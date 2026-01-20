@@ -24,6 +24,7 @@ public class OrderQueries(OrderingContext context)
             Zipcode = order.Address.ZipCode,
             Status = order.OrderStatus.ToString(),
             Total = order.GetTotal(),
+            PayPalOrderId = order.PayPalOrderId,
             OrderItems = order.OrderItems.Select(oi => new Orderitem
             {
                 ProductName = oi.ProductName,

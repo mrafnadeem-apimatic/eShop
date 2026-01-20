@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 internal static class Extensions
 {
@@ -15,6 +16,9 @@ internal static class Extensions
         services.AddDbContext<OrderingContext>(options =>
         {
             options.UseNpgsql(builder.Configuration.GetConnectionString("orderingdb"));
+            // Suppress EF Core's PendingModelChangesWarning at runtime. The model and migrations
+            // are kept in sync via explicit migrations in the Ordering.Infrastructure project.
+            options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
         builder.EnrichNpgsqlDbContext<OrderingContext>();
 
