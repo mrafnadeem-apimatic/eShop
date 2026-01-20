@@ -1,4 +1,5 @@
 ﻿using eShop.AppHost;
+using Microsoft.Extensions.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -11,6 +12,12 @@ var postgres = builder.AddPostgres("postgres")
     .WithImage("ankane/pgvector")
     .WithImageTag("latest")
     .WithLifetime(ContainerLifetime.Persistent);
+
+if (builder.Environment.IsDevelopment())
+{
+    postgres = postgres
+    .WithPgAdmin();
+}
 
 var catalogDb = postgres.AddDatabase("catalogdb");
 var identityDb = postgres.AddDatabase("identitydb");
