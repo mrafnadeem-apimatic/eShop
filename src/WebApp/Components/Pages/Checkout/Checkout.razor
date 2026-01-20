@@ -111,8 +111,9 @@
     private async Task HandleValidSubmitAsync()
     {
         Info.CardTypeId = 1;
-        await Basket.CheckoutAsync(Info);
-        Nav.NavigateTo("user/orders");
+        var checkoutUri = await Basket.CheckoutAsync(Info);
+        // NOTE: Possible source of security issues.
+        Nav.NavigateTo(checkoutUri.ApprovalUri);
     }
 
     private async Task PerformCustomValidationAsync()

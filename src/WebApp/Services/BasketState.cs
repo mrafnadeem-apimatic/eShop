@@ -75,7 +75,7 @@ public class BasketState(
         }
     }
 
-    public async Task CheckoutAsync(BasketCheckoutInfo checkoutInfo)
+    public async Task<CheckoutUri> CheckoutAsync(BasketCheckoutInfo checkoutInfo)
     {
         if (checkoutInfo.RequestId == default)
         {
@@ -105,7 +105,12 @@ public class BasketState(
             Buyer: buyerId,
             Items: [.. orderItems]);
         await orderingService.CreateOrder(request, checkoutInfo.RequestId);
+        // NOTE: Possible source of security issues.
+        var checkoutUri = new CheckoutUri("user/orders");
+        
         await DeleteBasketAsync();
+        
+        return checkoutUri;
     }
 
     private Task NotifyChangeSubscribersAsync()
@@ -154,6 +159,8 @@ public class BasketState(
         public void Dispose() => Owner._changeSubscriptions.Remove(this);
     }
 }
+
+public record CheckoutUri(string ApprovalUri);
 
 public record CreateOrderRequest(
     string UserId,
