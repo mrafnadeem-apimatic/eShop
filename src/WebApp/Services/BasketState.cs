@@ -75,7 +75,7 @@ public class BasketState(
         }
     }
 
-    public async Task<CheckoutUri> CheckoutAsync(BasketCheckoutInfo checkoutInfo)
+    public async Task<OrderCheckoutUri> CheckoutAsync(BasketCheckoutInfo checkoutInfo)
     {
         if (checkoutInfo.RequestId == default)
         {
@@ -104,9 +104,7 @@ public class BasketState(
             CardTypeId: checkoutInfo.CardTypeId,
             Buyer: buyerId,
             Items: [.. orderItems]);
-        await orderingService.CreateOrder(request, checkoutInfo.RequestId);
-        // NOTE: Possible source of security issues.
-        var checkoutUri = new CheckoutUri("user/orders");
+        var checkoutUri = await orderingService.CreateOrder(request, checkoutInfo.RequestId);
         
         await DeleteBasketAsync();
         

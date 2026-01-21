@@ -9,12 +9,15 @@ public class OrderingService(HttpClient httpClient)
         return httpClient.GetFromJsonAsync<OrderRecord[]>(remoteServiceBaseUrl)!;
     }
 
-    public Task CreateOrder(CreateOrderRequest request, Guid requestId)
+    public async Task<OrderCheckoutUri> CreateOrder(CreateOrderRequest request, Guid requestId)
     {
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, remoteServiceBaseUrl);
         requestMessage.Headers.Add("x-requestid", requestId.ToString());
         requestMessage.Content = JsonContent.Create(request);
-        return httpClient.SendAsync(requestMessage);
+        var response = await httpClient.SendAsync(requestMessage);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<OrderCheckoutUri>() ?? throw new InvalidOperationException();
     }
 }
 
@@ -23,3 +26,6 @@ public record OrderRecord(
     DateTime Date,
     string Status,
     decimal Total);
+
+public record OrderCheckoutUri(
+    string ApprovalUri);
