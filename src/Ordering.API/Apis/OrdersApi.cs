@@ -143,7 +143,7 @@ public static class OrdersApi
                 maskedCCNumber, request.CardHolderName, request.CardExpiration,
                 request.CardSecurityNumber, request.CardTypeId);
 
-            var requestCreateOrder = new IdentifiedCommand<CreateOrderCommand, bool>(createOrderCommand, requestId);
+            var requestCreateOrder = new IdentifiedCommand<CreateOrderCommand, OrderSubmission>(createOrderCommand, requestId);
 
             services.Logger.LogInformation(
                 "Sending command: {CommandName} - {IdProperty}: {CommandId} ({@Command})",
@@ -154,7 +154,7 @@ public static class OrdersApi
 
             var result = await services.Mediator.Send(requestCreateOrder);
 
-            if (result)
+            if (result.OrderSubmitted)
             {
                 services.Logger.LogInformation("CreateOrderCommand succeeded - RequestId: {RequestId}", requestId);
             }

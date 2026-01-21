@@ -4,7 +4,7 @@ using eShop.Ordering.Domain.AggregatesModel.OrderAggregate;
 
 // Regular CommandHandler
 public class CreateOrderCommandHandler
-    : IRequestHandler<CreateOrderCommand, bool>
+    : IRequestHandler<CreateOrderCommand, OrderSubmission>
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IIdentityService _identityService;
@@ -26,7 +26,7 @@ public class CreateOrderCommandHandler
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<bool> Handle(CreateOrderCommand message, CancellationToken cancellationToken)
+    public async Task<OrderSubmission> Handle(CreateOrderCommand message, CancellationToken cancellationToken)
     {
         // Add Integration event to clean the basket
         var orderStartedIntegrationEvent = new OrderStartedIntegrationEvent(message.UserId);
@@ -48,24 +48,29 @@ public class CreateOrderCommandHandler
 
         _orderRepository.Add(order);
 
-        return await _orderRepository.UnitOfWork.SaveEntitiesAsync(cancellationToken);
+        var orderSubmitted = await _orderRepository.UnitOfWork.SaveEntitiesAsync(cancellationToken);
+
+        //var approvalUri = _paymentProvider.CreateOrderPayment(order);
+        var approvalUri = "user/orders"; // Placeholder for payment approval URI
+
+        return new OrderSubmission(orderSubmitted, approvalUri);
     }
 }
 
 
 // Use for Idempotency in Command process
-public class CreateOrderIdentifiedCommandHandler : IdentifiedCommandHandler<CreateOrderCommand, bool>
+public class CreateOrderIdentifiedCommandHandler : IdentifiedCommandHandler<CreateOrderCommand, OrderSubmission>
 {
     public CreateOrderIdentifiedCommandHandler(
         IMediator mediator,
         IRequestManager requestManager,
-        ILogger<IdentifiedCommandHandler<CreateOrderCommand, bool>> logger)
+        ILogger<IdentifiedCommandHandler<CreateOrderCommand, OrderSubmission>> logger)
         : base(mediator, requestManager, logger)
     {
     }
 
-    protected override bool CreateResultForDuplicateRequest()
+    protected override OrderSubmission CreateResultForDuplicateRequest()
     {
-        return true; // Ignore duplicate requests for creating order.
+        return new OrderSubmission(true, ""); // Ignore duplicate requests for creating order.
     }
 }

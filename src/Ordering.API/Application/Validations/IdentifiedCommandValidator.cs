@@ -1,6 +1,6 @@
 ﻿namespace eShop.Ordering.API.Application.Validations;
 
-public class IdentifiedCommandValidator : AbstractValidator<IdentifiedCommand<CreateOrderCommand, bool>>
+public class IdentifiedCommandValidator : AbstractValidator<IdentifiedCommand<CreateOrderCommand, OrderSubmission>>
 {
     public IdentifiedCommandValidator(ILogger<IdentifiedCommandValidator> logger)
     {
