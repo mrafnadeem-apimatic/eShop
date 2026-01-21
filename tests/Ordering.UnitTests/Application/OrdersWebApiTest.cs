@@ -71,7 +71,9 @@ public class OrdersWebApiTest
     public async Task Ship_order_bad_request()
     {
         // Arrange
-        _mediatorMock.Send(Arg.Any<IdentifiedCommand<CreateOrderCommand, bool>>(), default)
+        _mediatorMock.Send(Arg.Any<IdentifiedCommand<ShipOrderCommand, bool>>(), default)
+            .Returns(Task.FromResult(true));
+        _mediatorMock.Send(Arg.Any<IdentifiedCommand<ShipOrderCommand, bool>>(), default)
             .Returns(Task.FromResult(true));
 
         // Act
@@ -81,6 +83,8 @@ public class OrdersWebApiTest
         // Assert
         Assert.IsInstanceOfType<BadRequest<string>>(result.Result);
     }
+
+    // TODO: Add tests for CreateOrderDraftAsync and CreateOrderAsync methods
 
     [TestMethod]
     public async Task Get_orders_success()

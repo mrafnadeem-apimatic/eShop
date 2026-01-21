@@ -43,7 +43,7 @@ public class NewOrderRequestHandlerTest
         var result = await handler.Handle(fakeOrderCmd, cltToken);
 
         //Assert
-        Assert.IsFalse(result);
+        Assert.IsFalse(result.OrderSubmitted);
     }
 
     [TestMethod]

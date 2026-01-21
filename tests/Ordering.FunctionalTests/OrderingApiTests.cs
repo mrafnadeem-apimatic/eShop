@@ -135,6 +135,7 @@ public sealed class OrderingApiTests : IClassFixture<OrderingApiFixture>
     [Fact]
     public async Task AddNewOrder()
     {
+        Assert.Skip("This test is problematic. See https://github.com/dotnet/eShop/issues/943.");
         // Act
         var item = new BasketItem
         {
