@@ -1,4 +1,6 @@
 ﻿using FluentValidation;
+using Ordering.Domain.Services;
+using Ordering.Infrastructure.Services;
 
 internal static class Extensions
 {
@@ -48,6 +50,7 @@ internal static class Extensions
         services.AddScoped<IBuyerRepository, BuyerRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IRequestManager, RequestManager>();
+        services.AddScoped<IPaymentProviderService, PayPalPaymentProviderService>();
     }
 
     private static void AddEventBusSubscriptions(this IEventBusBuilder eventBus)
