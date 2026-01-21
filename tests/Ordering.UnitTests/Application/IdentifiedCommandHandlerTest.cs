@@ -25,7 +25,7 @@ public class IdentifiedCommandHandlerTest
             .Returns(Task.FromResult(false));
 
         _mediator.Send(Arg.Any<IRequest<OrderSubmission>>(), default)
-            .Returns(Task.FromResult(new OrderSubmission(true, "")));
+            .Returns(Task.FromResult(new OrderSubmission(true, new(""))));
 
         // Act
         var handler = new CreateOrderIdentifiedCommandHandler(_mediator, _requestManager, _loggerMock);
@@ -47,7 +47,7 @@ public class IdentifiedCommandHandlerTest
             .Returns(Task.FromResult(true));
 
         _mediator.Send(Arg.Any<IRequest<OrderSubmission>>(), default)
-            .Returns(Task.FromResult(new OrderSubmission(true, "")));
+            .Returns(Task.FromResult(new OrderSubmission(true, new(""))));
 
         // Act
         var handler = new CreateOrderIdentifiedCommandHandler(_mediator, _requestManager, _loggerMock);

@@ -1,5 +1,7 @@
 ﻿using eShop.Ordering.API.Application.IntegrationEvents;
 using eShop.Ordering.Domain.AggregatesModel.OrderAggregate;
+using Ordering.Domain.Models;
+using Ordering.Domain.Services;
 
 namespace eShop.Ordering.UnitTests.Application;
 
@@ -37,8 +39,12 @@ public class NewOrderRequestHandlerTest
         _identityServiceMock.GetUserIdentity().Returns(buyerId);
 
         var LoggerMock = Substitute.For<ILogger<CreateOrderCommandHandler>>();
+
+        var paymentProviderMock = Substitute.For<IPaymentProviderService>();
+        paymentProviderMock.CreateOrderPayment(Arg.Any<Order>())
+            .Returns(Task.FromResult(new OrderPaymentUri("http://localhost:3000")));
         //Act
-        var handler = new CreateOrderCommandHandler(_mediator, _orderingIntegrationEventService, _orderRepositoryMock, _identityServiceMock, LoggerMock);
+        var handler = new CreateOrderCommandHandler(_mediator, _orderingIntegrationEventService, _orderRepositoryMock, _identityServiceMock, LoggerMock, paymentProviderMock);
         var cltToken = new CancellationToken();
         var result = await handler.Handle(fakeOrderCmd, cltToken);
 

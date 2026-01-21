@@ -1,4 +1,6 @@
-﻿namespace eShop.Ordering.API.Application.Commands;
+﻿using Ordering.Domain.Services;
+
+namespace eShop.Ordering.API.Application.Commands;
 
 using eShop.Ordering.Domain.AggregatesModel.OrderAggregate;
 
@@ -11,19 +13,21 @@ public class CreateOrderCommandHandler
     private readonly IMediator _mediator;
     private readonly IOrderingIntegrationEventService _orderingIntegrationEventService;
     private readonly ILogger<CreateOrderCommandHandler> _logger;
+    private readonly IPaymentProviderService _paymentProvider;
 
     // Using DI to inject infrastructure persistence Repositories
     public CreateOrderCommandHandler(IMediator mediator,
         IOrderingIntegrationEventService orderingIntegrationEventService,
         IOrderRepository orderRepository,
         IIdentityService identityService,
-        ILogger<CreateOrderCommandHandler> logger)
+        ILogger<CreateOrderCommandHandler> logger, IPaymentProviderService paymentProvider)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _identityService = identityService ?? throw new ArgumentNullException(nameof(identityService));
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         _orderingIntegrationEventService = orderingIntegrationEventService ?? throw new ArgumentNullException(nameof(orderingIntegrationEventService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _paymentProvider = paymentProvider;
     }
 
     public async Task<OrderSubmission> Handle(CreateOrderCommand message, CancellationToken cancellationToken)
@@ -50,10 +54,9 @@ public class CreateOrderCommandHandler
 
         var orderSubmitted = await _orderRepository.UnitOfWork.SaveEntitiesAsync(cancellationToken);
 
-        //var approvalUri = _paymentProvider.CreateOrderPayment(order);
-        var approvalUri = "user/orders"; // Placeholder for payment approval URI
+        var orderPaymentUri = await _paymentProvider.CreateOrderPayment(order);
 
-        return new OrderSubmission(orderSubmitted, approvalUri);
+        return new OrderSubmission(orderSubmitted, orderPaymentUri);
     }
 }
 
@@ -71,6 +74,6 @@ public class CreateOrderIdentifiedCommandHandler : IdentifiedCommandHandler<Crea
 
     protected override OrderSubmission CreateResultForDuplicateRequest()
     {
-        return new OrderSubmission(true, ""); // Ignore duplicate requests for creating order.
+        return new OrderSubmission(true, new("")); // Ignore duplicate requests for creating order.
     }
 }

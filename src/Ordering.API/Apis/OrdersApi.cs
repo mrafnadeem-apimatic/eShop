@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Ordering.Domain.Models;
 using CardType = eShop.Ordering.API.Application.Queries.CardType;
 using Order = eShop.Ordering.API.Application.Queries.Order;
 
@@ -115,7 +116,7 @@ public static class OrdersApi
         return await services.Mediator.Send(command);
     }
 
-    public static async Task<Results<Ok<OrderCheckoutUri>, BadRequest<string>>> CreateOrderAsync(
+    public static async Task<Results<Ok<OrderPaymentUri>, BadRequest<string>>> CreateOrderAsync(
         [FromHeader(Name = "x-requestid")] Guid requestId,
         CreateOrderRequest request,
         [AsParameters] OrderServices services)
@@ -163,13 +164,10 @@ public static class OrdersApi
                 services.Logger.LogWarning("CreateOrderCommand failed - RequestId: {RequestId}", requestId);
             }
 
-            return TypedResults.Ok(new OrderCheckoutUri("user/orders"));
+            return TypedResults.Ok(result.ApprovalUri);
         }
     }
 }
-
-public record OrderCheckoutUri(
-    string ApprovalUri);
 
 public record CreateOrderRequest(
     string UserId,
