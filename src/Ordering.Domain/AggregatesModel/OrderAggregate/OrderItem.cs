@@ -60,4 +60,6 @@ public class OrderItem
 
         Units += units;
     }
+
+    public string GetSku() => ProductId.ToString();
 }

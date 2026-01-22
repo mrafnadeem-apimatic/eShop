@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="PayPalServerSDK" />
   </ItemGroup>
 
 </Project>

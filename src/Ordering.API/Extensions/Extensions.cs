@@ -1,5 +1,4 @@
-﻿using FluentValidation;
-using Ordering.Domain.Services;
+﻿using Ordering.Domain.Services;
 using Ordering.Infrastructure.Services;
 
 internal static class Extensions
