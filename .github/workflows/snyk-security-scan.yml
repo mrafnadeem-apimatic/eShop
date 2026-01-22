@@ -1,6 +1,9 @@
 name: Snyk Security Scan (.NET)
 
 on:
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -17,10 +20,10 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore eshop.src.slnx
+        run: dotnet restore eShop.Web.slnf
 
       - name: Build
-        run: dotnet build eshop.src.slnx --no-restore
+        run: dotnet build eShop.Web.slnf --no-restore
 
       - name: Setup Snyk
         uses: snyk/actions/setup@master
