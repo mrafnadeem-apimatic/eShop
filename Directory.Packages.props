@@ -93,5 +93,7 @@
     <PackageVersion Include="Scalar.AspNetCore" Version="2.8.6" />
     <!-- Before license change -->
     <PackageVersion Include="MediatR" Version="13.0.0" />
+    <!-- PayPal Server SDK -->
+    <PackageVersion Include="PayPalServerSDK" Version="2.0.0" />
   </ItemGroup>
 </Project>

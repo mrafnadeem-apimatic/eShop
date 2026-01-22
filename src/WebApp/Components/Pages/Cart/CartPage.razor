@@ -1,8 +1,9 @@
 ﻿@page "/cart"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject NavigationManager Nav
 @inject BasketState Basket
 @inject IProductImageUrlProvider ProductImages
-@attribute [StreamRendering]
+@inject PaypalCheckoutService PaypalService
 @attribute [Authorize]
 
 <PageTitle>Shopping Bag | AdventureWorks</PageTitle>
@@ -60,7 +61,7 @@
        
 
         <div class="cart-summary">
-            <div class="cart-summary-container">
+                <div class="cart-summary-container">
                 <div class="cart-summary-header">
                     <img role="presentation" src="icons/cart.svg" />
                     Your shopping bag
@@ -70,7 +71,13 @@
                     <div>Total</div>
                     <div>$@TotalPrice?.ToString("0.00")</div>
                 </div>
-                <a href="checkout" class="button button-primary">Check out</a>
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="validation-message">@errorMessage</div>
+                }
+                <button class="button button-primary" type="button" @onclick="CheckoutWithPaypalAsync" disabled="@isPaypalProcessing">
+                    @(isPaypalProcessing ? "Redirecting to PayPal..." : "Check out with PayPal")
+                </button>
                 <a href="" class="cart-summary-link">
                     <img role="presentation" src="icons/arrow-left.svg" />
                     <p>Continue shopping</p>
@@ -84,6 +91,8 @@
 
 @code {
     private IReadOnlyCollection<BasketItem>? basketItems;
+    private bool isPaypalProcessing;
+    private string? errorMessage;
 
     [SupplyParameterFromForm]
     public int? UpdateQuantityId { get; set; }
@@ -112,5 +121,46 @@
         var quantity = UpdateQuantityValue!.Value;
         await Basket.SetQuantityAsync(id, quantity);
         basketItems = await Basket.GetBasketItemsAsync();
+    }
+
+    private async Task CheckoutWithPaypalAsync()
+    {
+        if (basketItems is null || basketItems.Count == 0 || !TotalPrice.HasValue || TotalPrice.Value <= 0)
+        {
+            return;
+        }
+
+        isPaypalProcessing = true;
+        errorMessage = null;
+
+        try
+        {
+            var baseUri = new Uri(Nav.BaseUri);
+            var returnUrl = new Uri(baseUri, "checkout/paypal-confirm").ToString();
+            var cancelUrl = new Uri(baseUri, "cart").ToString();
+
+            var result = await PaypalService.CreateOrderAsync(
+                TotalPrice.Value,
+                "USD",
+                returnUrl,
+                cancelUrl);
+
+            if (result is null || string.IsNullOrWhiteSpace(result.Value.ApprovalLink))
+            {
+                errorMessage = "Could not start PayPal checkout. Please try again.";
+                return;
+            }
+
+            // Interactive navigation to the external PayPal approval URL
+            Nav.NavigateTo(result.Value.ApprovalLink, forceLoad: true);
+        }
+        catch
+        {
+            errorMessage = "Unexpected error starting PayPal checkout. Please try again.";
+        }
+        finally
+        {
+            isPaypalProcessing = false;
+        }
     }
 }
