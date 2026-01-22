@@ -1,4 +1,4 @@
-name: Snyk Security Scan (.NET)
+name: Snyk Security Scan MAUI(.NET)
 
 on:
   pull_request:
