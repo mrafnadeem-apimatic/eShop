@@ -34,6 +34,8 @@ public class Order
 
     public int? PaymentId { get; private set; }
 
+    public string PaypalOrderId { get; private set; }
+
     public static Order NewDraft()
     {
         var order = new Order
@@ -50,10 +52,11 @@ public class Order
     }
 
     public Order(string userId, string userName, Address address, int cardTypeId, string cardNumber, string cardSecurityNumber,
-            string cardHolderName, DateTime cardExpiration, int? buyerId = null, int? paymentMethodId = null) : this()
+            string cardHolderName, DateTime cardExpiration, string paypalOrderId, int? buyerId = null, int? paymentMethodId = null) : this()
     {
         BuyerId = buyerId;
         PaymentId = paymentMethodId;
+        PaypalOrderId = paypalOrderId;
         OrderStatus = OrderStatus.Submitted;
         OrderDate = DateTime.UtcNow;
         Address = address;
@@ -109,7 +112,7 @@ public class Order
     {
         if (OrderStatus == OrderStatus.AwaitingValidation)
         {
-            AddDomainEvent(new OrderStatusChangedToStockConfirmedDomainEvent(Id));
+            AddDomainEvent(new OrderStatusChangedToStockConfirmedDomainEvent(Id, PaypalOrderId));
 
             OrderStatus = OrderStatus.StockConfirmed;
             Description = "All the items were confirmed with available stock.";

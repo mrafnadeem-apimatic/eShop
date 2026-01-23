@@ -31,4 +31,6 @@ public class BasketCheckoutInfo
 
     public string? Buyer { get; set; }
     public Guid RequestId { get; set; }
+
+    public string? PaypalOrderId { get; set; }
 }

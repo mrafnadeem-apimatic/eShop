@@ -8,6 +8,11 @@ public class OrderStatusChangedToStockConfirmedDomainEvent
 {
     public int OrderId { get; }
 
-    public OrderStatusChangedToStockConfirmedDomainEvent(int orderId)
-        => OrderId = orderId;
+    public string PaypalOrderId { get; }
+
+    public OrderStatusChangedToStockConfirmedDomainEvent(int orderId, string paypalOrderId)
+    {
+        OrderId = orderId;
+        PaypalOrderId = paypalOrderId;
+    }
 }

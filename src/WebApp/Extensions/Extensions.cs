@@ -38,6 +38,20 @@ public static class Extensions
         builder.Services.AddHttpClient<OrderingService>(o => o.BaseAddress = new("https+http://ordering-api"))
             .AddApiVersion(1.0)
             .AddAuthToken();
+
+        // Payment processor HTTP client
+        var paymentProcessorUrl = builder.Configuration["PaymentProcessorUrl"];
+        if (!string.IsNullOrWhiteSpace(paymentProcessorUrl))
+        {
+            builder.Services.AddHttpClient<PaypalCheckoutService>(o => o.BaseAddress = new(paymentProcessorUrl))
+                .AddAuthToken();
+        }
+        else
+        {
+            // Default to service-discovery when running under eShop.AppHost
+            builder.Services.AddHttpClient<PaypalCheckoutService>(o => o.BaseAddress = new("https+http://payment-processor"))
+                .AddAuthToken();
+        }
     }
 
     public static void AddEventBusSubscriptions(this IEventBusBuilder eventBus)

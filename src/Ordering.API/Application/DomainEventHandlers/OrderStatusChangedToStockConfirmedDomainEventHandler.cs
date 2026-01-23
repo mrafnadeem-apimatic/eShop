@@ -27,7 +27,12 @@ public class OrderStatusChangedToStockConfirmedDomainEventHandler
         var order = await _orderRepository.GetAsync(domainEvent.OrderId);
         var buyer = await _buyerRepository.FindByIdAsync(order.BuyerId.Value);
 
-        var integrationEvent = new OrderStatusChangedToStockConfirmedIntegrationEvent(order.Id, order.OrderStatus, buyer.Name, buyer.IdentityGuid);
+        var integrationEvent = new OrderStatusChangedToStockConfirmedIntegrationEvent(
+            order.Id,
+            order.OrderStatus,
+            buyer.Name,
+            buyer.IdentityGuid,
+            order.PaypalOrderId);
         await _orderingIntegrationEventService.AddAndSaveEventAsync(integrationEvent);
     }
 }

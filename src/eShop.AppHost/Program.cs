@@ -47,7 +47,8 @@ builder.AddProject<Projects.OrderProcessor>("order-processor")
     .WithReference(orderDb)
     .WaitFor(orderingApi); // wait for the orderingApi to be ready because that contains the EF migrations
 
-builder.AddProject<Projects.PaymentProcessor>("payment-processor")
+var paymentProcessor = builder.AddProject<Projects.PaymentProcessor>("payment-processor")
+    .WithExternalHttpEndpoints()
     .WithReference(rabbitMq).WaitFor(rabbitMq);
 
 var webHooksApi = builder.AddProject<Projects.Webhooks_API>("webhooks-api")
@@ -71,6 +72,7 @@ var webApp = builder.AddProject<Projects.WebApp>("webapp", launchProfileName)
     .WithReference(basketApi)
     .WithReference(catalogApi)
     .WithReference(orderingApi)
+    .WithReference(paymentProcessor)
     .WithReference(rabbitMq).WaitFor(rabbitMq)
     .WithEnvironment("IdentityUrl", identityEndpoint);
 

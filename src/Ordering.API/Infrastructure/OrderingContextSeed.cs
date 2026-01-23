@@ -6,6 +6,8 @@ public class OrderingContextSeed: IDbSeeder<OrderingContext>
 {
     public async Task SeedAsync(OrderingContext context)
     {
+
+
         if (!context.CardTypes.Any())
         {
             context.CardTypes.AddRange(GetPredefinedCardTypes());

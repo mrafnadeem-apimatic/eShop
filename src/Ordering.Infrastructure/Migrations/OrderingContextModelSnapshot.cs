@@ -163,6 +163,9 @@ namespace Ordering.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<string>("PaypalOrderId")
+                        .HasColumnType("text");
+
                     b.Property<string>("OrderStatus")
                         .IsRequired()
                         .HasMaxLength(30)

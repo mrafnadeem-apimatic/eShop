@@ -3,6 +3,7 @@
 public class OrderStatusChangedToStockConfirmedIntegrationEventHandler(
     IEventBus eventBus,
     IOptionsMonitor<PaymentOptions> options,
+    eShop.PaymentProcessor.Services.PaypalCheckoutService paypalService,
     ILogger<OrderStatusChangedToStockConfirmedIntegrationEventHandler> logger) :
     IIntegrationEventHandler<OrderStatusChangedToStockConfirmedIntegrationEvent>
 {
@@ -12,19 +13,35 @@ public class OrderStatusChangedToStockConfirmedIntegrationEventHandler(
 
         IntegrationEvent orderPaymentIntegrationEvent;
 
-        // Business feature comment:
-        // When OrderStatusChangedToStockConfirmed Integration Event is handled.
-        // Here we're simulating that we'd be performing the payment against any payment gateway
-        // Instead of a real payment we just take the env. var to simulate the payment 
-        // The payment can be successful or it can fail
-
-        if (options.CurrentValue.PaymentSucceeded)
+        if (!string.IsNullOrWhiteSpace(@event.PaypalOrderId) && paypalService.IsConfigured)
         {
-            orderPaymentIntegrationEvent = new OrderPaymentSucceededIntegrationEvent(@event.OrderId);
+            try
+            {
+                await paypalService.CaptureOrderAsync(@event.PaypalOrderId);
+                orderPaymentIntegrationEvent = new OrderPaymentSucceededIntegrationEvent(@event.OrderId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error capturing PayPal order {PaypalOrderId} for internal order {OrderId}", @event.PaypalOrderId, @event.OrderId);
+                orderPaymentIntegrationEvent = new OrderPaymentFailedIntegrationEvent(@event.OrderId);
+            }
         }
         else
         {
-            orderPaymentIntegrationEvent = new OrderPaymentFailedIntegrationEvent(@event.OrderId);
+            // Business feature comment:
+            // When OrderStatusChangedToStockConfirmed Integration Event is handled.
+            // Here we're simulating that we'd be performing the payment against any payment gateway
+            // Instead of a real payment we just take the env. var to simulate the payment 
+            // The payment can be successful or it can fail
+
+            if (options.CurrentValue.PaymentSucceeded)
+            {
+                orderPaymentIntegrationEvent = new OrderPaymentSucceededIntegrationEvent(@event.OrderId);
+            }
+            else
+            {
+                orderPaymentIntegrationEvent = new OrderPaymentFailedIntegrationEvent(@event.OrderId);
+            }
         }
 
         logger.LogInformation("Publishing integration event: {IntegrationEventId} - ({@IntegrationEvent})", orderPaymentIntegrationEvent.Id, orderPaymentIntegrationEvent);
