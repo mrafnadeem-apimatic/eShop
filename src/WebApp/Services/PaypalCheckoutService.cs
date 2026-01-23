@@ -32,6 +32,12 @@ public class PaypalCheckoutService(HttpClient httpClient)
             return null;
         }
 
+        if (string.IsNullOrWhiteSpace(payload.PaypalOrderId) ||
+            string.IsNullOrWhiteSpace(payload.ApprovalLink))
+        {
+            return null;
+        }
+
         return new CreatePaypalOrderResult(payload.PaypalOrderId, payload.ApprovalLink);
     }
 }

@@ -105,6 +105,18 @@ public class PaypalCheckoutService
                 .FirstOrDefault(l => string.Equals(l.Rel, "approve", StringComparison.OrdinalIgnoreCase))
                 ?.Href;
 
+            if (string.IsNullOrWhiteSpace(approvalLink))
+            {
+                _logger.LogError(
+                    "PayPal order {OrderId} did not contain an approval link. Status: {Status}. Links: {@Links}",
+                    orderId,
+                    result.Data.Status,
+                    result.Data.Links);
+
+                throw new InvalidOperationException(
+                    $"PayPal order '{orderId}' did not include a customer approval link.");
+            }
+
             _logger.LogInformation("Created PayPal order {OrderId} with status {Status}", orderId, result.Data.Status);
 
             return (orderId, approvalLink);
