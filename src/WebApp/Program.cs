@@ -8,6 +8,15 @@ builder.AddServiceDefaults();
 
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
+// Session is used to persist the PayPal order id between the time an order is
+// created in /paypal/pay and when the shopper is redirected back to checkout.
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
 builder.AddApplicationServices();
 
 var app = builder.Build();
@@ -27,6 +36,8 @@ app.UseAntiforgery();
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
+
+app.UseSession();
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 

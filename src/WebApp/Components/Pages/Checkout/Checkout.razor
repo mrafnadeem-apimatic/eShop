@@ -61,7 +61,10 @@
                     </p>
                 }
                 <div class="form-buttons">
-                    <a href="/paypal/pay" class="button button-secondary">Pay with PayPal</a>
+                    @if (!paymentCompleted)
+                    {
+                        <a href="/paypal/pay" class="button button-secondary">Pay with PayPal</a>
+                    }
                     <a href="cart" class="button button-secondary"><img role="presentation" src="icons/arrow-left.svg" />Back to the shopping bag</a>
                     @if (paymentCompleted)
                     {
@@ -95,18 +98,31 @@
         editContext = new EditContext(Info!);
         extraMessages = new ValidationMessageStore(editContext);
 
-        // Detect if user is returning from PayPal with an approved payment
+        // Detect if user is returning from PayPal with an approved payment.
+        // We only trust the paypalOrderId query value when it matches the value
+        // that was stored server-side in the session when the PayPal order was
+        // first created in the /paypal/pay endpoint.
         var paid = HttpContext.Request.Query["paid"].ToString();
-        var paypalOrderId = HttpContext.Request.Query["paypalOrderId"].ToString();
+        var paypalOrderIdFromQuery = HttpContext.Request.Query["paypalOrderId"].ToString();
+        var paypalOrderIdFromSession = HttpContext.Session.GetString(PayPalSessionKeys.OrderId);
+
+        var orderIdsMatch = !string.IsNullOrWhiteSpace(paypalOrderIdFromQuery)
+                            && string.Equals(
+                                paypalOrderIdFromQuery,
+                                paypalOrderIdFromSession,
+                                StringComparison.Ordinal);
 
         paymentCompleted = string.Equals(paid, "1", StringComparison.Ordinal)
-                           && !string.IsNullOrWhiteSpace(paypalOrderId);
+                           && orderIdsMatch;
 
         // Only associate the PayPal order ID with this checkout when the approval
-        // flag is present and we consider the payment completed.
+        // flag is present, the query token matches the session-stored id and we
+        // consider the payment completed. Clear the session value so it cannot be
+        // reused on subsequent requests.
         if (paymentCompleted)
         {
-            Info!.PayPalOrderId = paypalOrderId;
+            Info!.PayPalOrderId = paypalOrderIdFromQuery;
+            HttpContext.Session.Remove(PayPalSessionKeys.OrderId);
         }
     }
 

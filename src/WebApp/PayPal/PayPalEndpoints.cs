@@ -109,7 +109,19 @@ public static class PayPalEndpoints
         }
 
         var order = await orderResp.Content.ReadFromJsonAsync<PayPalOrderResponse>();
-        var approveLink = order?.Links?.FirstOrDefault(l => l.Rel == "approve")?.Href;
+
+        if (order is null || string.IsNullOrWhiteSpace(order.Id))
+        {
+            logger.LogError("Invalid PayPal order response: missing order id.");
+            return Results.Problem("Unable to start PayPal payment.");
+        }
+
+        // Persist the created PayPal order id in the user's session so that when
+        // they return from PayPal we can validate the query token against this
+        // server-side value before marking the payment as completed.
+        httpContext.Session.SetString(PayPalSessionKeys.OrderId, order.Id);
+
+        var approveLink = order.Links?.FirstOrDefault(l => l.Rel == "approve")?.Href;
         if (string.IsNullOrWhiteSpace(approveLink))
         {
             logger.LogError("No approval link in PayPal order response.");

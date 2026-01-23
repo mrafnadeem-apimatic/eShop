@@ -1,7 +1,6 @@
 ﻿using eShop.Basket.API.Grpc;
 using eShop.WebApp.Services.OrderStatus.IntegrationEvents;
 using eShop.WebAppComponents.Services;
-using eShop.WebApp.PayPal;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components.Authorization;
