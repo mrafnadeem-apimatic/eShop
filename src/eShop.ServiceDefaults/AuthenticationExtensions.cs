@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -30,7 +31,9 @@ public static class AuthenticationExtensions
         // prevent from mapping "sub" claim to nameidentifier.
         JsonWebTokenHandler.DefaultInboundClaimTypeMap.Remove("sub");
 
-        services.AddAuthentication().AddJwtBearer(options =>
+        // Configure JWT bearer as the default authentication scheme so middleware
+        // (including gRPC endpoints) populates HttpContext.User automatically.
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
         {
             var identityUrl = identitySection.GetRequiredValue("Url");
             var audience = identitySection.GetRequiredValue("Audience");

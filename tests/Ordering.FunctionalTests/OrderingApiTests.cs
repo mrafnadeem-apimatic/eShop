@@ -146,9 +146,27 @@ public sealed class OrderingApiTests : IClassFixture<OrderingApiFixture>
             Quantity = 1,
             PictureUrl = null
         };
-        var cardExpirationDate = Convert.ToDateTime("2023-12-22T12:34:24.334Z");
-        var OrderRequest = new CreateOrderRequest("1", "TestUser", null, null, null, null, null, "XXXXXXXXXXXX0005", "Test User", cardExpirationDate, "test buyer", 1, null, new List<BasketItem> { item });
-        var content = new StringContent(JsonSerializer.Serialize(OrderRequest), UTF8Encoding.UTF8, "application/json")
+        var cardExpirationDate = DateTime.UtcNow.AddYears(1);
+
+        var buyerId = Guid.NewGuid().ToString();
+        var orderRequest = new CreateOrderRequest(
+            UserId: buyerId,
+            UserName: "TestUser",
+            City: "TestCity",
+            Street: "TestStreet",
+            State: "TestState",
+            Country: "TestCountry",
+            ZipCode: "12345",
+            CardNumber: "1111222233334444",
+            CardHolderName: "TEST USER",
+            CardExpiration: cardExpirationDate,
+            CardSecurityNumber: "111",
+            CardTypeId: 1,
+            Buyer: buyerId,
+            Items: new List<BasketItem> { item },
+            PayPalOrderId: null);
+
+        var content = new StringContent(JsonSerializer.Serialize(orderRequest), UTF8Encoding.UTF8, "application/json")
         {
             Headers = { { "x-requestid", Guid.NewGuid().ToString() } }
         };

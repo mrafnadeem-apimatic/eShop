@@ -168,6 +168,10 @@ namespace Ordering.Infrastructure.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
+                    b.Property<string>("PayPalOrderId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<int?>("_buyerId")
                         .HasColumnType("integer")
                         .HasColumnName("BuyerId");

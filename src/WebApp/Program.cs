@@ -1,11 +1,21 @@
 ﻿using eShop.WebApp.Components;
 using eShop.ServiceDefaults;
+using eShop.WebApp.PayPal;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+
+// Session is used to persist the PayPal order id between the time an order is
+// created in /paypal/pay and when the shopper is redirected back to checkout.
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 
 builder.AddApplicationServices();
 
@@ -27,7 +37,12 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
+app.UseSession();
+
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+
+// PayPal OAuth endpoints (Log in with PayPal)
+app.MapPayPalEndpoints();
 
 app.MapForwarder("/product-images/{id}", "https+http://catalog-api", "/api/catalog/items/{id}/pic");
 

@@ -11,6 +11,7 @@
 <div class='checkout'>
     <EditForm EditContext="@editContext" FormName="checkout" OnSubmit="@HandleSubmitAsync" Enhance>
         <DataAnnotationsValidator />
+        <input type="hidden" name="Info.PayPalOrderId" value="@Info.PayPalOrderId" />
         <div class="form">
             <div class="form-section">
                 <h2>Shipping address</h2>
@@ -51,9 +52,25 @@
                 </div>
             </div>
             <div class="form-section">
+                <p class="payment-note">
+                    Your payment will be securely processed via PayPal.
+                </p>
+                @if (paymentCompleted)
+                {
+                    <p class="payment-success">
+                        Your PayPal authorization was successful. You can now place your order.
+                    </p>
+                }
                 <div class="form-buttons">
+                    @if (!paymentCompleted)
+                    {
+                        <a href="/paypal/pay" class="button button-secondary">Pay with PayPal</a>
+                    }
                     <a href="cart" class="button button-secondary"><img role="presentation" src="icons/arrow-left.svg" />Back to the shopping bag</a>
-                    <button class="button button-primary" type="submit">Place order</button>
+                    @if (paymentCompleted)
+                    {
+                        <button class="button button-primary" type="submit">Place order</button>
+                    }
                 </div>
             </div>
         </div>
@@ -64,6 +81,7 @@
 @code {
     private EditContext editContext = default!;
     private ValidationMessageStore extraMessages = default!;
+    private bool paymentCompleted;
 
     [SupplyParameterFromForm]
     public BasketCheckoutInfo Info { get; set; } = default!;
@@ -80,6 +98,39 @@
 
         editContext = new EditContext(Info!);
         extraMessages = new ValidationMessageStore(editContext);
+
+        // Detect if user is returning from PayPal with an approved payment.
+        // We only trust the paypalOrderId query value when it matches the value
+        // that was stored server-side in the session when the PayPal order was
+        // first created in the /paypal/pay endpoint.
+        var paid = HttpContext.Request.Query["paid"].ToString();
+        var paypalOrderIdFromQuery = HttpContext.Request.Query["paypalOrderId"].ToString();
+        var paypalOrderIdFromForm = Info!.PayPalOrderId;
+        var paypalOrderIdFromSession = HttpContext.Session.GetString(PayPalSessionKeys.OrderId);
+
+        var paypalOrderId = !string.IsNullOrWhiteSpace(paypalOrderIdFromQuery)
+            ? paypalOrderIdFromQuery
+            : paypalOrderIdFromForm;
+
+        var orderIdsMatch = !string.IsNullOrWhiteSpace(paypalOrderId)
+                            && string.Equals(paypalOrderId, paypalOrderIdFromSession, StringComparison.Ordinal);
+
+        // For the initial redirect back from PayPal we require paid=1.
+        // For the subsequent enhanced-form POST (Place order), the query string may be absent,
+        // so we also treat POST as a continuation as long as the PayPal order id matches session.
+        paymentCompleted = orderIdsMatch
+                           && (string.Equals(paid, "1", StringComparison.Ordinal)
+                               || HttpMethods.IsPost(HttpContext.Request.Method));
+
+        // Only associate the PayPal order ID with this checkout when the approval
+        // flag is present, the query token matches the session-stored id and we
+        // consider the payment completed.
+        // Note: we clear the session value only after the order is successfully created,
+        // otherwise enhanced form posts would lose the PayPal order id.
+        if (paymentCompleted)
+        {
+            Info!.PayPalOrderId = paypalOrderId;
+        }
     }
 
     private void PopulateFormWithDefaultInfo()
@@ -112,6 +163,17 @@
     {
         Info.CardTypeId = 1;
         await Basket.CheckoutAsync(Info);
+
+        // Clear the PayPal order id from session once we've successfully placed the order.
+        // This prevents reuse of the approval token on subsequent checkouts.
+        if (!string.IsNullOrWhiteSpace(Info.PayPalOrderId))
+        {
+            var paypalOrderIdFromSession = HttpContext.Session.GetString(PayPalSessionKeys.OrderId);
+            if (string.Equals(Info.PayPalOrderId, paypalOrderIdFromSession, StringComparison.Ordinal))
+            {
+                HttpContext.Session.Remove(PayPalSessionKeys.OrderId);
+            }
+        }
         Nav.NavigateTo("user/orders");
     }
 

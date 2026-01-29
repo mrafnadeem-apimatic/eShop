@@ -22,9 +22,11 @@ public static class Extensions
         // Application services
         builder.Services.AddScoped<BasketState>();
         builder.Services.AddScoped<LogOutService>();
-        builder.Services.AddSingleton<BasketService>();
+        // BasketService needs access to HttpContext (for tokens), so it must be scoped
+        builder.Services.AddScoped<BasketService>();
         builder.Services.AddSingleton<OrderStatusNotificationService>();
         builder.Services.AddSingleton<IProductImageUrlProvider, ProductImageUrlProvider>();
+        builder.Services.AddScoped<BasketPricingService>();
         builder.AddAIServices();
 
         // HTTP and GRPC client registrations
