@@ -1,9 +1,9 @@
-﻿#nullable enable
+#nullable enable
 using System.Net.Http.Json;
 
 namespace eShop.PaymentProcessor;
 
-public class OrderingApiClient
+public class OrderingApiClient : IOrderingApiClient
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<OrderingApiClient> _logger;

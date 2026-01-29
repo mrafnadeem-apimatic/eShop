@@ -11,6 +11,7 @@
 <div class='checkout'>
     <EditForm EditContext="@editContext" FormName="checkout" OnSubmit="@HandleSubmitAsync" Enhance>
         <DataAnnotationsValidator />
+        <input type="hidden" name="Info.PayPalOrderId" value="@Info.PayPalOrderId" />
         <div class="form">
             <div class="form-section">
                 <h2>Shipping address</h2>
@@ -104,25 +105,31 @@
         // first created in the /paypal/pay endpoint.
         var paid = HttpContext.Request.Query["paid"].ToString();
         var paypalOrderIdFromQuery = HttpContext.Request.Query["paypalOrderId"].ToString();
+        var paypalOrderIdFromForm = Info!.PayPalOrderId;
         var paypalOrderIdFromSession = HttpContext.Session.GetString(PayPalSessionKeys.OrderId);
 
-        var orderIdsMatch = !string.IsNullOrWhiteSpace(paypalOrderIdFromQuery)
-                            && string.Equals(
-                                paypalOrderIdFromQuery,
-                                paypalOrderIdFromSession,
-                                StringComparison.Ordinal);
+        var paypalOrderId = !string.IsNullOrWhiteSpace(paypalOrderIdFromQuery)
+            ? paypalOrderIdFromQuery
+            : paypalOrderIdFromForm;
 
-        paymentCompleted = string.Equals(paid, "1", StringComparison.Ordinal)
-                           && orderIdsMatch;
+        var orderIdsMatch = !string.IsNullOrWhiteSpace(paypalOrderId)
+                            && string.Equals(paypalOrderId, paypalOrderIdFromSession, StringComparison.Ordinal);
+
+        // For the initial redirect back from PayPal we require paid=1.
+        // For the subsequent enhanced-form POST (Place order), the query string may be absent,
+        // so we also treat POST as a continuation as long as the PayPal order id matches session.
+        paymentCompleted = orderIdsMatch
+                           && (string.Equals(paid, "1", StringComparison.Ordinal)
+                               || HttpMethods.IsPost(HttpContext.Request.Method));
 
         // Only associate the PayPal order ID with this checkout when the approval
         // flag is present, the query token matches the session-stored id and we
-        // consider the payment completed. Clear the session value so it cannot be
-        // reused on subsequent requests.
+        // consider the payment completed.
+        // Note: we clear the session value only after the order is successfully created,
+        // otherwise enhanced form posts would lose the PayPal order id.
         if (paymentCompleted)
         {
-            Info!.PayPalOrderId = paypalOrderIdFromQuery;
-            HttpContext.Session.Remove(PayPalSessionKeys.OrderId);
+            Info!.PayPalOrderId = paypalOrderId;
         }
     }
 
@@ -156,6 +163,17 @@
     {
         Info.CardTypeId = 1;
         await Basket.CheckoutAsync(Info);
+
+        // Clear the PayPal order id from session once we've successfully placed the order.
+        // This prevents reuse of the approval token on subsequent checkouts.
+        if (!string.IsNullOrWhiteSpace(Info.PayPalOrderId))
+        {
+            var paypalOrderIdFromSession = HttpContext.Session.GetString(PayPalSessionKeys.OrderId);
+            if (string.Equals(Info.PayPalOrderId, paypalOrderIdFromSession, StringComparison.Ordinal))
+            {
+                HttpContext.Session.Remove(PayPalSessionKeys.OrderId);
+            }
+        }
         Nav.NavigateTo("user/orders");
     }
 
