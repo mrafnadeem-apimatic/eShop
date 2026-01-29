@@ -49,7 +49,8 @@ builder.AddProject<Projects.OrderProcessor>("order-processor")
 
 builder.AddProject<Projects.PaymentProcessor>("payment-processor")
     .WithReference(orderingApi)
-    .WithReference(rabbitMq).WaitFor(rabbitMq);
+    .WithReference(rabbitMq).WaitFor(rabbitMq)
+    .WithEnvironment("ServiceAuth__Authority", identityEndpoint);
 
 var webHooksApi = builder.AddProject<Projects.Webhooks_API>("webhooks-api")
     .WithReference(rabbitMq).WaitFor(rabbitMq)

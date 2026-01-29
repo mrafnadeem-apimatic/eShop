@@ -14,7 +14,7 @@ builder.Services.AddHttpClient<OrderingApiClient>(client =>
     {
         client.BaseAddress = new Uri("https+http://ordering-api");
     })
-    .AddAuthToken();
+    .AddClientCredentialsToken("ServiceAuth");
 
 // HTTP client used to talk to the external PayPal REST API
 builder.Services.AddHttpClient("paypal");
