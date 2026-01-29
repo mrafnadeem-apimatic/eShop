@@ -18,25 +18,12 @@ public sealed class PayPalPaymentServiceTests
         var handler = new MockPayPalHttpHandler(tokenSuccess: true, captureStatus: "COMPLETED");
 
         // --- FIXED DEPENDENCIES (same across tests; not what we are asserting on). ---
-        var orderId = 42;
-        var orderDto = new OrderDto { OrderNumber = orderId, Total = 99.99m, PayPalOrderId = "test-order-123" };
-        var orderingApiClient = Substitute.For<IOrderingApiClient>();
-        orderingApiClient.GetOrderAsync(orderId, Arg.Any<CancellationToken>()).Returns(orderDto);
-
-        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api-m.sandbox.paypal.com/") };
-        var httpClientFactory = Substitute.For<IHttpClientFactory>();
-        httpClientFactory.CreateClient("paypal").Returns(httpClient);
-
-        var paymentOptions = new PaymentOptions
-        {
-            UsePayPal = true,
-            PayPalClientId = "test-client-id",
-            PayPalClientSecret = "test-secret",
-            PayPalEnvironment = "Sandbox"
-        };
-        var optionsMonitor = Substitute.For<IOptionsMonitor<PaymentOptions>>();
-        optionsMonitor.CurrentValue.Returns(paymentOptions);
-        var logger = Substitute.For<ILogger<PayPalPaymentService>>();
+        int orderId;
+        IOrderingApiClient orderingApiClient;
+        IHttpClientFactory httpClientFactory;
+        IOptionsMonitor<PaymentOptions> optionsMonitor;
+        ILogger<PayPalPaymentService> logger;
+        GetCommonDependencies(handler, out orderId, out orderingApiClient, out httpClientFactory, out optionsMonitor, out logger);
 
         var sut = new PayPalPaymentService(orderingApiClient, httpClientFactory, optionsMonitor, logger);
 
@@ -46,20 +33,15 @@ public sealed class PayPalPaymentServiceTests
         Assert.IsTrue(result);
     }
 
-    [TestMethod]
-    public async Task ProcessPaymentAsync_WhenPayPalCaptureReturnsNonCompleted_ReturnsFalse()
+    private static void GetCommonDependencies(MockPayPalHttpHandler handler, out int orderId, out IOrderingApiClient orderingApiClient, out IHttpClientFactory httpClientFactory, out IOptionsMonitor<PaymentOptions> optionsMonitor, out ILogger<PayPalPaymentService> logger)
     {
-        // --- UNDER TEST: PayPal capture returns 200 but status is not "COMPLETED" (e.g. "OTHER") → service must return false. ---
-        var handler = new MockPayPalHttpHandler(tokenSuccess: true, captureStatus: "OTHER");
-
-        // --- FIXED DEPENDENCIES. ---
-        var orderId = 42;
-        var orderDto = new OrderDto { OrderNumber = orderId, Total = 49.99m, PayPalOrderId = "test-order-456" };
-        var orderingApiClient = Substitute.For<IOrderingApiClient>();
+        orderId = 42;
+        var orderDto = new OrderDto { OrderNumber = orderId, Total = 99.99m, PayPalOrderId = "test-order-123" };
+        orderingApiClient = Substitute.For<IOrderingApiClient>();
         orderingApiClient.GetOrderAsync(orderId, Arg.Any<CancellationToken>()).Returns(orderDto);
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api-m.sandbox.paypal.com/") };
-        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory = Substitute.For<IHttpClientFactory>();
         httpClientFactory.CreateClient("paypal").Returns(httpClient);
 
         var paymentOptions = new PaymentOptions
@@ -69,9 +51,24 @@ public sealed class PayPalPaymentServiceTests
             PayPalClientSecret = "test-secret",
             PayPalEnvironment = "Sandbox"
         };
-        var optionsMonitor = Substitute.For<IOptionsMonitor<PaymentOptions>>();
+        optionsMonitor = Substitute.For<IOptionsMonitor<PaymentOptions>>();
         optionsMonitor.CurrentValue.Returns(paymentOptions);
-        var logger = Substitute.For<ILogger<PayPalPaymentService>>();
+        logger = Substitute.For<ILogger<PayPalPaymentService>>();
+    }
+
+    [TestMethod]
+    public async Task ProcessPaymentAsync_WhenPayPalCaptureReturnsNonCompleted_ReturnsFalse()
+    {
+        // --- UNDER TEST: PayPal capture returns 200 but status is not "COMPLETED" (e.g. "OTHER") → service must return false. ---
+        var handler = new MockPayPalHttpHandler(tokenSuccess: true, captureStatus: "OTHER");
+
+        // --- FIXED DEPENDENCIES. ---
+        int orderId;
+        IOrderingApiClient orderingApiClient;
+        IHttpClientFactory httpClientFactory;
+        IOptionsMonitor<PaymentOptions> optionsMonitor;
+        ILogger<PayPalPaymentService> logger;
+        GetCommonDependencies(handler, out orderId, out orderingApiClient, out httpClientFactory, out optionsMonitor, out logger);
 
         var sut = new PayPalPaymentService(orderingApiClient, httpClientFactory, optionsMonitor, logger);
 
@@ -88,25 +85,12 @@ public sealed class PayPalPaymentServiceTests
         var handler = new MockPayPalHttpHandler(tokenSuccess: true, captureHttpStatus: HttpStatusCode.NotFound);
 
         // --- FIXED DEPENDENCIES. ---
-        var orderId = 42;
-        var orderDto = new OrderDto { OrderNumber = orderId, Total = 29.99m, PayPalOrderId = "test-order-789" };
-        var orderingApiClient = Substitute.For<IOrderingApiClient>();
-        orderingApiClient.GetOrderAsync(orderId, Arg.Any<CancellationToken>()).Returns(orderDto);
-
-        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api-m.sandbox.paypal.com/") };
-        var httpClientFactory = Substitute.For<IHttpClientFactory>();
-        httpClientFactory.CreateClient("paypal").Returns(httpClient);
-
-        var paymentOptions = new PaymentOptions
-        {
-            UsePayPal = true,
-            PayPalClientId = "test-client-id",
-            PayPalClientSecret = "test-secret",
-            PayPalEnvironment = "Sandbox"
-        };
-        var optionsMonitor = Substitute.For<IOptionsMonitor<PaymentOptions>>();
-        optionsMonitor.CurrentValue.Returns(paymentOptions);
-        var logger = Substitute.For<ILogger<PayPalPaymentService>>();
+        int orderId;
+        IOrderingApiClient orderingApiClient;
+        IHttpClientFactory httpClientFactory;
+        IOptionsMonitor<PaymentOptions> optionsMonitor;
+        ILogger<PayPalPaymentService> logger;
+        GetCommonDependencies(handler, out orderId, out orderingApiClient, out httpClientFactory, out optionsMonitor, out logger);
 
         var sut = new PayPalPaymentService(orderingApiClient, httpClientFactory, optionsMonitor, logger);
 
