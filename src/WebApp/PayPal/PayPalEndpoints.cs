@@ -23,6 +23,21 @@ public static class PayPalEndpoints
         ILoggerFactory loggerFactory)
     {
         var logger = loggerFactory.CreateLogger("PayPalCreateOrder");
+        var total = await basketPricingService.GetBasketTotalAsync(httpContext.RequestAborted);
+        if (total <= 0)
+        {
+            return Results.BadRequest("Basket is empty.");
+        }
+
+        // E2E test mode: skip real PayPal API, set session and redirect to /paypal/return.
+        if (configuration.GetValue<bool>("PayPal:E2ETestMode"))
+        {
+            logger.LogInformation("E2E test mode is enabled.");
+            var fakeOrderId = "e2e-test-" + Guid.NewGuid().ToString("N");
+            httpContext.Session.SetString(PayPalSessionKeys.OrderId, fakeOrderId);
+            return Results.Redirect("/paypal/return?token=" + Uri.EscapeDataString(fakeOrderId));
+        }
+
         var env = configuration["PayPal:Environment"] ?? "Sandbox";
         var clientId = configuration["PayPal:ClientId"];
         var clientSecret = configuration["PayPal:ClientSecret"];
@@ -34,12 +49,6 @@ public static class PayPalEndpoints
             string.IsNullOrWhiteSpace(returnUrl) || string.IsNullOrWhiteSpace(cancelUrl))
         {
             return Results.BadRequest("PayPal is not configured.");
-        }
-
-        var total = await basketPricingService.GetBasketTotalAsync(httpContext.RequestAborted);
-        if (total <= 0)
-        {
-            return Results.BadRequest("Basket is empty.");
         }
 
         var baseUrl = env.Equals("Live", StringComparison.OrdinalIgnoreCase)
