@@ -92,6 +92,13 @@ if (useOllama)
 webApp.WithEnvironment("CallBackUrl", webApp.GetEndpoint(launchProfileName));
 webhooksClient.WithEnvironment("CallBackUrl", webhooksClient.GetEndpoint(launchProfileName));
 
+// PayPal E2E test mode: when set, WebApp skips real PayPal API and simulates order + return flow for Playwright.
+var payPalE2ETestMode = Environment.GetEnvironmentVariable("ESHOP_PAYPAL_E2E_TEST_MODE");
+if (!string.IsNullOrEmpty(payPalE2ETestMode))
+{
+    webApp.WithEnvironment("PayPal:E2ETestMode", "true");
+}
+
 // Identity has a reference to all of the apps for callback urls, this is a cyclic reference
 identityApi.WithEnvironment("BasketApiClient", basketApi.GetEndpoint("http"))
            .WithEnvironment("OrderingApiClient", orderingApi.GetEndpoint("http"))
