@@ -8,12 +8,12 @@ using System.Text.Json.Serialization;
 namespace eShop.PaymentProcessor;
 
 public sealed class PayPalPaymentService(
-    OrderingApiClient orderingApiClient,
+    IOrderingApiClient orderingApiClient,
     IHttpClientFactory httpClientFactory,
     IOptionsMonitor<PaymentOptions> options,
     ILogger<PayPalPaymentService> logger) : IPaymentService
 {
-    private readonly OrderingApiClient _orderingApiClient = orderingApiClient;
+    private readonly IOrderingApiClient _orderingApiClient = orderingApiClient;
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
     private readonly IOptionsMonitor<PaymentOptions> _options = options;
     private readonly ILogger<PayPalPaymentService> _logger = logger;
