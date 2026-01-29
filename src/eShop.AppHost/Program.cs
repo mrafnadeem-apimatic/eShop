@@ -48,6 +48,7 @@ builder.AddProject<Projects.OrderProcessor>("order-processor")
     .WaitFor(orderingApi); // wait for the orderingApi to be ready because that contains the EF migrations
 
 builder.AddProject<Projects.PaymentProcessor>("payment-processor")
+    .WithReference(orderingApi)
     .WithReference(rabbitMq).WaitFor(rabbitMq);
 
 var webHooksApi = builder.AddProject<Projects.Webhooks_API>("webhooks-api")
