@@ -1,4 +1,4 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
@@ -10,7 +10,7 @@ builder.Services.AddOptions<PaymentOptions>()
 
 // HTTP client used to query Ordering.API for order totals before invoking PayPal.
 // Use service discovery so this works in containerized and cloud environments.
-builder.Services.AddHttpClient<OrderingApiClient>(client =>
+builder.Services.AddHttpClient<IOrderingApiClient, OrderingApiClient>(client =>
     {
         client.BaseAddress = new Uri("https+http://ordering-api");
     })
