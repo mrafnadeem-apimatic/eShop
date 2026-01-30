@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using PaypalServerSdk.Standard;
 using PaypalServerSdk.Standard.Authentication;
 using PaypalServerSdk.Standard.Models;
@@ -14,8 +14,8 @@ public sealed class PayPalPaymentService(
     private readonly IOptionsMonitor<PaymentOptions> _options = options;
     private readonly ILogger<PayPalPaymentService> _logger = logger;
 
-    private readonly object _clientLock = new();
-    private PaypalServerSdkClient? _paypalClient;
+    private readonly Lazy<PaypalServerSdkClient> _paypalClient =
+        new(() => CreatePayPalClient(options.CurrentValue));
 
     public async Task<bool> ProcessPaymentAsync(int orderId, CancellationToken cancellationToken = default)
     {
@@ -52,7 +52,7 @@ public sealed class PayPalPaymentService(
 
         try
         {
-            var client = GetOrCreatePayPalClient(settings);
+            var client = _paypalClient.Value;
 
             var captured = await CapturePayPalOrderAsync(
                 client,
@@ -73,21 +73,6 @@ public sealed class PayPalPaymentService(
         }
     }
 
-    private PaypalServerSdkClient GetOrCreatePayPalClient(PaymentOptions settings)
-    {
-        if (_paypalClient is not null)
-        {
-            return _paypalClient;
-        }
-
-        lock (_clientLock)
-        {
-            _paypalClient ??= CreatePayPalClient(settings);
-        }
-
-        return _paypalClient;
-    }
-
     private static PaypalServerSdkClient CreatePayPalClient(PaymentOptions settings)
     {
         var environment = settings.PayPalEnvironment?.Equals("Live", StringComparison.OrdinalIgnoreCase) == true
@@ -101,7 +86,6 @@ public sealed class PayPalPaymentService(
                         settings.PayPalClientSecret!)
                     .Build())
             .Environment(environment)
-            .LoggingConfig()
             .Build();
     }
 
