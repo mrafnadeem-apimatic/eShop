@@ -6,11 +6,11 @@ using PaypalServerSdk.Standard.Models;
 namespace eShop.PaymentProcessor;
 
 public sealed class PayPalPaymentService(
-    OrderingApiClient orderingApiClient,
+    IOrderingApiClient orderingApiClient,
     IOptionsMonitor<PaymentOptions> options,
     ILogger<PayPalPaymentService> logger) : IPaymentService
 {
-    private readonly OrderingApiClient _orderingApiClient = orderingApiClient;
+    private readonly IOrderingApiClient _orderingApiClient = orderingApiClient;
     private readonly IOptionsMonitor<PaymentOptions> _options = options;
     private readonly ILogger<PayPalPaymentService> _logger = logger;
 
