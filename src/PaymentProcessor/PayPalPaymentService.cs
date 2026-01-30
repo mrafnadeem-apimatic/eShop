@@ -1,22 +1,21 @@
 ﻿#nullable enable
-using System.Globalization;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json.Serialization;
+using PaypalServerSdk.Standard;
+using PaypalServerSdk.Standard.Authentication;
+using PaypalServerSdk.Standard.Models;
 
 namespace eShop.PaymentProcessor;
 
 public sealed class PayPalPaymentService(
     IOrderingApiClient orderingApiClient,
-    IHttpClientFactory httpClientFactory,
     IOptionsMonitor<PaymentOptions> options,
     ILogger<PayPalPaymentService> logger) : IPaymentService
 {
     private readonly IOrderingApiClient _orderingApiClient = orderingApiClient;
-    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
     private readonly IOptionsMonitor<PaymentOptions> _options = options;
     private readonly ILogger<PayPalPaymentService> _logger = logger;
+
+    private readonly Lazy<PaypalServerSdkClient> _paypalClient =
+        new(() => CreatePayPalClient(options.CurrentValue));
 
     public async Task<bool> ProcessPaymentAsync(int orderId, CancellationToken cancellationToken = default)
     {
@@ -37,38 +36,33 @@ public sealed class PayPalPaymentService(
         var order = await _orderingApiClient.GetOrderAsync(orderId, cancellationToken);
         if (order is null)
         {
-            _logger.LogWarning("Unable to load order {OrderId} from Ordering.API; marking payment as failed", orderId);
+            _logger.LogWarning(
+                "Unable to load order {OrderId} from Ordering.API; marking payment as failed",
+                orderId);
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(order.PayPalOrderId))
+        {
+            _logger.LogWarning(
+                "Order {OrderId} does not have an associated PayPal order ID; cannot capture payment.",
+                orderId);
             return false;
         }
 
         try
         {
-            var client = _httpClientFactory.CreateClient("paypal");
+            var client = _paypalClient.Value;
 
-            var baseUrl = settings.PayPalEnvironment?.Equals("Live", StringComparison.OrdinalIgnoreCase) == true
-                ? "https://api-m.paypal.com"
-                : "https://api-m.sandbox.paypal.com";
+            var captured = await CapturePayPalOrderAsync(
+                client,
+                order.PayPalOrderId,
+                cancellationToken);
 
-            client.BaseAddress ??= new Uri(baseUrl);
-
-            var accessToken = await GetAccessTokenAsync(client, settings, cancellationToken);
-            if (string.IsNullOrEmpty(accessToken))
-            {
-                _logger.LogWarning("Could not obtain PayPal access token for order {OrderId}", orderId);
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(order.PayPalOrderId))
-            {
-                _logger.LogWarning(
-                    "Order {OrderId} does not have an associated PayPal order ID; cannot capture payment.",
-                    orderId);
-                return false;
-            }
-
-            var captured = await CapturePayPalOrderAsync(client, accessToken, order.PayPalOrderId, cancellationToken);
-
-            _logger.LogInformation("PayPal capture for order {OrderId} completed with result: {Result}", orderId, captured);
+            _logger.LogInformation(
+                "PayPal capture for order {OrderId} completed with result: {Result}",
+                orderId,
+                captured);
 
             return captured;
         }
@@ -79,63 +73,50 @@ public sealed class PayPalPaymentService(
         }
     }
 
-    private static async Task<string?> GetAccessTokenAsync(
-        HttpClient client,
-        PaymentOptions options,
-        CancellationToken cancellationToken)
+    private static PaypalServerSdkClient CreatePayPalClient(PaymentOptions settings)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, "/v1/oauth2/token");
-        var credentials = Convert.ToBase64String(
-            Encoding.ASCII.GetBytes($"{options.PayPalClientId}:{options.PayPalClientSecret}"));
+        var environment = settings.PayPalEnvironment?.Equals("Live", StringComparison.OrdinalIgnoreCase) == true
+            ? PaypalServerSdk.Standard.Environment.Production
+            : PaypalServerSdk.Standard.Environment.Sandbox;
 
-        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
-        request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["grant_type"] = "client_credentials"
-        });
-
-        var response = await client.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            return null;
-        }
-
-        var payload = await response.Content.ReadFromJsonAsync<PayPalTokenResponse>(cancellationToken: cancellationToken);
-        return payload?.AccessToken;
+        return new PaypalServerSdkClient.Builder()
+            .ClientCredentialsAuth(
+                new ClientCredentialsAuthModel.Builder(
+                        settings.PayPalClientId!,
+                        settings.PayPalClientSecret!)
+                    .Build())
+            .Environment(environment)
+            .Build();
     }
 
     private static async Task<bool> CapturePayPalOrderAsync(
-        HttpClient client,
-        string accessToken,
+        PaypalServerSdkClient client,
         string paypalOrderId,
         CancellationToken cancellationToken)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, $"/v2/checkout/orders/{paypalOrderId}/capture");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        // PayPal expects application/json content type, even for an empty body
-        request.Content = JsonContent.Create(new { });
+        var captureInput = new CaptureOrderInput
+        {
+            Id = paypalOrderId,
+            // Ensure PayPal receives JSON, even when the body is effectively empty.
+            ContentType = "application/json",
+            Body = new OrderCaptureRequest(),
+            Prefer = "return=representation",
+        };
 
-        var response = await client.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        var response = await client.OrdersController.CaptureOrderAsync(captureInput, cancellationToken);
+
+        if (response.StatusCode is < 200 or >= 300)
         {
             return false;
         }
 
-        var payload = await response.Content.ReadFromJsonAsync<PayPalCaptureOrderResponse>(cancellationToken: cancellationToken);
-        return string.Equals(payload?.Status, "COMPLETED", StringComparison.OrdinalIgnoreCase);
-    }
+        var capturedOrder = response.Data;
+        if (capturedOrder is null || capturedOrder.Status is null)
+        {
+            return false;
+        }
 
-    private sealed class PayPalTokenResponse
-    {
-        [JsonPropertyName("access_token")]
-        public string AccessToken { get; init; } = string.Empty;
-    }
-
-    private sealed class PayPalCaptureOrderResponse
-    {
-        [JsonPropertyName("status")]
-        public string? Status { get; init; }
+        return capturedOrder.Status == OrderStatus.Completed;
     }
 }
-
 

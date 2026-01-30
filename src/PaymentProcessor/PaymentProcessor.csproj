@@ -10,4 +10,8 @@
     <ProjectReference Include="..\EventBusRabbitMQ\EventBusRabbitMQ.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="PayPalServerSDK" />
+  </ItemGroup>
+
 </Project>
