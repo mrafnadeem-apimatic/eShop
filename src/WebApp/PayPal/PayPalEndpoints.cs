@@ -1,8 +1,7 @@
-﻿using System.Globalization;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json.Serialization;
+using System.Globalization;
+using PaypalServerSdk.Standard;
+using PaypalServerSdk.Standard.Exceptions;
+using PaypalServerSdk.Standard.Models;
 
 namespace eShop.WebApp.PayPal;
 
@@ -17,9 +16,9 @@ public static class PayPalEndpoints
 
     private static async Task<IResult> CreateOrderAndRedirectAsync(
         HttpContext httpContext,
-        IConfiguration configuration,
-        IHttpClientFactory httpClientFactory,
+        Microsoft.Extensions.Configuration.IConfiguration configuration,
         BasketPricingService basketPricingService,
+        PaypalServerSdkClient paypalClient,
         ILoggerFactory loggerFactory)
     {
         var logger = loggerFactory.CreateLogger("PayPalCreateOrder");
@@ -38,153 +37,118 @@ public static class PayPalEndpoints
             return Results.Redirect("/paypal/return?token=" + Uri.EscapeDataString(fakeOrderId));
         }
 
-        var env = configuration["PayPal:Environment"] ?? "Sandbox";
         var clientId = configuration["PayPal:ClientId"];
         var clientSecret = configuration["PayPal:ClientSecret"];
         var returnUrl = configuration["PayPal:RedirectUri"];
         var cancelUrl = configuration["PayPal:CancelUrl"];
         var currency = configuration["PayPal:CurrencyCode"] ?? "USD";
 
-        if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret) ||
-            string.IsNullOrWhiteSpace(returnUrl) || string.IsNullOrWhiteSpace(cancelUrl))
+        if (string.IsNullOrWhiteSpace(clientId) ||
+            string.IsNullOrWhiteSpace(clientSecret) ||
+            string.IsNullOrWhiteSpace(returnUrl) ||
+            string.IsNullOrWhiteSpace(cancelUrl))
         {
             return Results.BadRequest("PayPal is not configured.");
         }
 
-        var baseUrl = env.Equals("Live", StringComparison.OrdinalIgnoreCase)
-            ? "https://api-m.paypal.com"
-            : "https://api-m.sandbox.paypal.com";
+        var amountValue = total.ToString("F2", CultureInfo.InvariantCulture);
 
-        var client = httpClientFactory.CreateClient();
-        client.BaseAddress = new Uri(baseUrl);
-
-        // Get app access token (client_credentials)
-        var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{clientId}:{clientSecret}"));
-        using var tokenReq = new HttpRequestMessage(HttpMethod.Post, "/v1/oauth2/token")
+        var createOrderInput = new CreateOrderInput
         {
-            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            Body = new OrderRequest
             {
-                ["grant_type"] = "client_credentials"
-            })
-        };
-        tokenReq.Headers.Authorization = new AuthenticationHeaderValue("Basic", basic);
-        var tokenResp = await client.SendAsync(tokenReq);
-        if (!tokenResp.IsSuccessStatusCode)
-        {
-            var body = await tokenResp.Content.ReadAsStringAsync();
-            logger.LogError("Error getting PayPal access token: {Status} {Body}", tokenResp.StatusCode, body);
-            return Results.Problem("Unable to start PayPal payment.");
-        }
-
-        var token = await tokenResp.Content.ReadFromJsonAsync<PayPalTokenResponse>();
-        if (token is null || string.IsNullOrWhiteSpace(token.AccessToken))
-        {
-            return Results.Problem("Invalid PayPal token response.");
-        }
-
-        // Create order with approval link
-        using var orderReq = new HttpRequestMessage(HttpMethod.Post, "/v2/checkout/orders");
-        orderReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
-
-        var bodyObj = new
-        {
-            intent = "CAPTURE",
-            purchase_units = new[]
-            {
-                new
+                Intent = CheckoutPaymentIntent.Capture,
+                PurchaseUnits = new List<PurchaseUnitRequest>
                 {
-                    amount = new
+                    new()
                     {
-                        currency_code = currency,
-                        value = total.ToString("F2", CultureInfo.InvariantCulture)
-                    }
-                }
+                        Amount = new AmountWithBreakdown
+                        {
+                            CurrencyCode = currency,
+                            MValue = amountValue,
+                        },
+                    },
+                },
+                ApplicationContext = new OrderApplicationContext
+                {
+                    ReturnUrl = returnUrl,
+                    CancelUrl = cancelUrl,
+                },
             },
-            application_context = new
-            {
-                return_url = returnUrl,
-                cancel_url = cancelUrl
-            }
+            Prefer = "return=minimal",
         };
 
-        orderReq.Content = JsonContent.Create(bodyObj);
-
-        var orderResp = await client.SendAsync(orderReq);
-        if (!orderResp.IsSuccessStatusCode)
+        try
         {
-            var body = await orderResp.Content.ReadAsStringAsync();
-            logger.LogError("Error creating PayPal order: {Status} {Body}", orderResp.StatusCode, body);
+            var ordersController = paypalClient.OrdersController;
+            var response = await ordersController.CreateOrderAsync(createOrderInput);
+
+            var order = response.Data;
+            if (order is null || string.IsNullOrWhiteSpace(order.Id))
+            {
+                logger.LogError("Invalid PayPal order response from SDK: missing order id.");
+                return Results.Problem("Unable to start PayPal payment.");
+            }
+
+            // Persist the created PayPal order id in the user's session so that when
+            // they return from PayPal we can validate the query token against this
+            // server-side value before marking the payment as completed.
+            httpContext.Session.SetString(PayPalSessionKeys.OrderId, order.Id);
+
+            var approveLink = order.Links?
+                .FirstOrDefault(l => string.Equals(l.Rel, "approve", StringComparison.OrdinalIgnoreCase))
+                ?.Href;
+
+            if (string.IsNullOrWhiteSpace(approveLink))
+            {
+                logger.LogError("No approval link in PayPal order response from SDK.");
+                return Results.Problem("Unable to start PayPal payment.");
+            }
+
+            logger.LogInformation(
+                "Created PayPal order {OrderId} with status {Status}",
+                order.Id,
+                order.Status);
+
+            return Results.Redirect(approveLink);
+        }
+        catch (ApiException e)
+        {
+            logger.LogError(e, "Error creating PayPal order via SDK.");
+
+            if (e is ErrorException error)
+            {
+                logger.LogError(
+                    "PayPal SDK error when creating order. Name={Name}, Message={Message}, DebugId={DebugId}",
+                    error.Name,
+                    error.Message,
+                    error.DebugId);
+            }
+
             return Results.Problem("Unable to start PayPal payment.");
         }
-
-        var order = await orderResp.Content.ReadFromJsonAsync<PayPalOrderResponse>();
-
-        if (order is null || string.IsNullOrWhiteSpace(order.Id))
-        {
-            logger.LogError("Invalid PayPal order response: missing order id.");
-            return Results.Problem("Unable to start PayPal payment.");
-        }
-
-        // Persist the created PayPal order id in the user's session so that when
-        // they return from PayPal we can validate the query token against this
-        // server-side value before marking the payment as completed.
-        httpContext.Session.SetString(PayPalSessionKeys.OrderId, order.Id);
-
-        var approveLink = order.Links?.FirstOrDefault(l => l.Rel == "approve")?.Href;
-        if (string.IsNullOrWhiteSpace(approveLink))
-        {
-            logger.LogError("No approval link in PayPal order response.");
-            return Results.Problem("Unable to start PayPal payment.");
-        }
-
-        return Results.Redirect(approveLink);
     }
 
-    private static async Task<IResult> CaptureOrderAsync(
+    private static Task<IResult> CaptureOrderAsync(
         HttpContext httpContext,
-        IConfiguration configuration,
-        IHttpClientFactory httpClientFactory,
+        Microsoft.Extensions.Configuration.IConfiguration configuration,
         ILoggerFactory loggerFactory)
     {
         var logger = loggerFactory.CreateLogger("PayPalCaptureOrder");
         var orderId = httpContext.Request.Query["token"].ToString();
         if (string.IsNullOrWhiteSpace(orderId))
         {
-            return Results.BadRequest("Missing PayPal order token.");
+            return Task.FromResult(Results.BadRequest("Missing PayPal order token."));
         }
-        
+
         // At this point the payer has approved the PayPal order in the browser.
         // We do NOT capture here. Instead, redirect back to checkout with the
         // approved PayPal order ID so the payment processor can capture it later.
         logger.LogInformation("PayPal order {OrderId} approved, redirecting back to checkout.", orderId);
 
         var redirectUrl = $"/checkout?paid=1&paypalOrderId={Uri.EscapeDataString(orderId)}";
-        return Results.Redirect(redirectUrl);
+        return Task.FromResult(Results.Redirect(redirectUrl));
     }
 
     private static IResult CancelAsync() => Results.Redirect("/checkout");
-
-    private sealed class PayPalTokenResponse
-    {
-        [JsonPropertyName("access_token")]
-        public string AccessToken { get; init; } = string.Empty;
-    }
-
-    private sealed class PayPalOrderResponse
-    {
-        [JsonPropertyName("id")]
-        public string Id { get; init; } = string.Empty;
-
-        [JsonPropertyName("links")]
-        public List<PayPalLink>? Links { get; init; }
-    }
-
-    private sealed class PayPalLink
-    {
-        [JsonPropertyName("rel")]
-        public string Rel { get; init; } = string.Empty;
-
-        [JsonPropertyName("href")]
-        public string Href { get; init; } = string.Empty;
-    }
 }
