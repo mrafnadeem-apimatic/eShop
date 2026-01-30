@@ -25,7 +25,6 @@
     <PackageReference Include="Google.Protobuf" />
     <PackageReference Include="Grpc.Net.ClientFactory" />
     <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
-    <PackageReference Include="PayPalServerSDK" />
   </ItemGroup>
 
   <ItemGroup>

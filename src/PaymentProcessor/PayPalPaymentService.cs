@@ -14,6 +14,9 @@ public sealed class PayPalPaymentService(
     private readonly IOptionsMonitor<PaymentOptions> _options = options;
     private readonly ILogger<PayPalPaymentService> _logger = logger;
 
+    private readonly object _clientLock = new();
+    private PaypalServerSdkClient? _paypalClient;
+
     public async Task<bool> ProcessPaymentAsync(int orderId, CancellationToken cancellationToken = default)
     {
         var settings = _options.CurrentValue;
@@ -49,7 +52,7 @@ public sealed class PayPalPaymentService(
 
         try
         {
-            var client = CreatePayPalClient(settings);
+            var client = GetOrCreatePayPalClient(settings);
 
             var captured = await CapturePayPalOrderAsync(
                 client,
@@ -68,6 +71,21 @@ public sealed class PayPalPaymentService(
             _logger.LogError(ex, "Error while processing PayPal payment for order {OrderId}", orderId);
             return false;
         }
+    }
+
+    private PaypalServerSdkClient GetOrCreatePayPalClient(PaymentOptions settings)
+    {
+        if (_paypalClient is not null)
+        {
+            return _paypalClient;
+        }
+
+        lock (_clientLock)
+        {
+            _paypalClient ??= CreatePayPalClient(settings);
+        }
+
+        return _paypalClient;
     }
 
     private static PaypalServerSdkClient CreatePayPalClient(PaymentOptions settings)
