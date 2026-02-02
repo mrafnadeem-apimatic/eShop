@@ -58,6 +58,11 @@ public sealed class PayPalPaymentService(
 
             return captureResult.Succeeded;
         }
+        catch (OperationCanceledException)
+        {
+            // Propagate cancellations so they are not treated as failures.
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while processing PayPal payment for order {OrderId}", orderId);
