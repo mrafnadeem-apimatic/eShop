@@ -7,6 +7,8 @@ namespace eShop.WebApp.PayPal;
 
 public static class PayPalEndpoints
 {
+    private static readonly TimeSpan PayPalOperationTimeout = TimeSpan.FromSeconds(30);
+
     public static void MapPayPalEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/paypal/pay", CreateOrderAndRedirectAsync);
@@ -83,7 +85,7 @@ public static class PayPalEndpoints
             var ordersController = paypalClient.OrdersController;
             var response = await ordersController
                 .CreateOrderAsync(createOrderInput)
-                .WaitAsync(TimeSpan.FromSeconds(30), httpContext.RequestAborted);
+                .WaitAsync(PayPalOperationTimeout, httpContext.RequestAborted);
 
             var order = response.Data;
             if (order is null || string.IsNullOrWhiteSpace(order.Id))
@@ -113,6 +115,15 @@ public static class PayPalEndpoints
                 order.Status);
 
             return Results.Redirect(approveLink);
+        }
+        catch (TimeoutException e)
+        {
+            logger.LogError(
+                e,
+                "Timed out after {TimeoutSeconds} seconds while creating PayPal order.",
+                PayPalOperationTimeout.TotalSeconds);
+
+            return Results.Problem("Unable to start PayPal payment.");
         }
         catch (ApiException e)
         {
