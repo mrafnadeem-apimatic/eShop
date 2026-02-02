@@ -16,36 +16,57 @@ builder.Services.AddHttpClient<IOrderingApiClient, OrderingApiClient>(client =>
     })
     .AddClientCredentialsToken("ServiceAuth");
 
-// Register a singleton PayPalServerSDK client that will be used by the payment
-// service to capture approved PayPal orders. When PayPal is disabled or not
-// configured, the payment service will continue to fall back to the simulated
-// behavior and will not invoke this client.
-builder.Services.AddSingleton(sp =>
+// Only register the PayPal SDK client and its wrapper when PayPal is enabled
+// and credentials are configured. Otherwise, the payment service will fall
+// back to the simulated behavior without invoking the SDK.
+var paymentOptions = builder.Configuration
+    .GetSection(nameof(PaymentOptions))
+    .Get<PaymentOptions>() ?? new PaymentOptions();
+
+if (paymentOptions.UsePayPal)
 {
-    var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<PaymentOptions>>().Value;
+    if (string.IsNullOrWhiteSpace(paymentOptions.PayPalClientId) ||
+        string.IsNullOrWhiteSpace(paymentOptions.PayPalClientSecret))
+    {
+        throw new InvalidOperationException(
+            "PaymentOptions misconfiguration: PayPal is enabled (UsePayPal=true) " +
+            "but PayPalClientId or PayPalClientSecret is not configured.");
+    }
 
-    var environment = options.PayPalEnvironment?.Equals("Live", StringComparison.OrdinalIgnoreCase) == true
-        ? PaypalServerSdk.Standard.Environment.Production
-        : PaypalServerSdk.Standard.Environment.Sandbox;
+    builder.Services.AddSingleton(sp =>
+    {
+        var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<PaymentOptions>>().Value;
 
-    var authModel = new PaypalServerSdk.Standard.Authentication.ClientCredentialsAuthModel.Builder(
-            options.PayPalClientId ?? throw new InvalidOperationException("PayPal ClientId is not configured"),
-            options.PayPalClientSecret ?? throw new InvalidOperationException("PayPal ClientSecret is not configured"))
-        .Build();
+        var environment = options.PayPalEnvironment?.Equals("Live", StringComparison.OrdinalIgnoreCase) == true
+            ? PaypalServerSdk.Standard.Environment.Production
+            : PaypalServerSdk.Standard.Environment.Sandbox;
 
-    return new PaypalServerSdk.Standard.PaypalServerSdkClient.Builder()
-        .ClientCredentialsAuth(authModel)
-        .Environment(environment)
-        .LoggingConfig(config => config
-            .LogLevel(Microsoft.Extensions.Logging.LogLevel.Information)
-            .RequestConfig(reqConfig => reqConfig.Body(false))
-            .ResponseConfig(respConfig => respConfig.Headers(false)))
-        .Build();
-});
+        var authModel = new PaypalServerSdk.Standard.Authentication.ClientCredentialsAuthModel.Builder(
+                options.PayPalClientId!,
+                options.PayPalClientSecret!)
+            .Build();
 
-// Register a wrapper over the PayPal Orders SDK controller so that the domain
-// service can be unit tested without depending directly on SDK types.
-builder.Services.AddSingleton<IPayPalOrdersClient, PayPalOrdersClient>();
+        return new PaypalServerSdk.Standard.PaypalServerSdkClient.Builder()
+            .ClientCredentialsAuth(authModel)
+            .Environment(environment)
+            .LoggingConfig(config => config
+                .LogLevel(Microsoft.Extensions.Logging.LogLevel.Information)
+                .RequestConfig(reqConfig => reqConfig.Body(false))
+                .ResponseConfig(respConfig => respConfig.Headers(false)))
+            .Build();
+    });
+
+    // Register a wrapper over the PayPal Orders SDK controller so that the domain
+    // service can be unit tested without depending directly on SDK types.
+    builder.Services.AddSingleton<IPayPalOrdersClient, PayPalOrdersClient>();
+}
+else
+{
+    // PayPal is disabled or not configured; still provide an IPayPalOrdersClient so
+    // that the payment service can be resolved, but it should never be invoked
+    // because the service falls back to simulated payments in this case.
+    builder.Services.AddSingleton<IPayPalOrdersClient, DisabledPayPalOrdersClient>();
+}
 
 builder.Services.AddScoped<IPaymentService, PayPalPaymentService>();
 
