@@ -1,21 +1,16 @@
 ﻿#nullable enable
-using PaypalServerSdk.Standard;
-using PaypalServerSdk.Standard.Authentication;
-using PaypalServerSdk.Standard.Models;
-
 namespace eShop.PaymentProcessor;
 
 public sealed class PayPalPaymentService(
     IOrderingApiClient orderingApiClient,
     IOptionsMonitor<PaymentOptions> options,
+    IPayPalOrdersApi payPalOrdersApi,
     ILogger<PayPalPaymentService> logger) : IPaymentService
 {
     private readonly IOrderingApiClient _orderingApiClient = orderingApiClient;
     private readonly IOptionsMonitor<PaymentOptions> _options = options;
+    private readonly IPayPalOrdersApi _payPalOrdersApi = payPalOrdersApi;
     private readonly ILogger<PayPalPaymentService> _logger = logger;
-
-    private readonly Lazy<PaypalServerSdkClient> _paypalClient =
-        new(() => CreatePayPalClient(options.CurrentValue));
 
     public async Task<bool> ProcessPaymentAsync(int orderId, CancellationToken cancellationToken = default)
     {
@@ -52,12 +47,7 @@ public sealed class PayPalPaymentService(
 
         try
         {
-            var client = _paypalClient.Value;
-
-            var captured = await CapturePayPalOrderAsync(
-                client,
-                order.PayPalOrderId,
-                cancellationToken);
+            var captured = await _payPalOrdersApi.CaptureOrderAsync(order.PayPalOrderId, cancellationToken);
 
             _logger.LogInformation(
                 "PayPal capture for order {OrderId} completed with result: {Result}",
@@ -72,51 +62,4 @@ public sealed class PayPalPaymentService(
             return false;
         }
     }
-
-    private static PaypalServerSdkClient CreatePayPalClient(PaymentOptions settings)
-    {
-        var environment = settings.PayPalEnvironment?.Equals("Live", StringComparison.OrdinalIgnoreCase) == true
-            ? PaypalServerSdk.Standard.Environment.Production
-            : PaypalServerSdk.Standard.Environment.Sandbox;
-
-        return new PaypalServerSdkClient.Builder()
-            .ClientCredentialsAuth(
-                new ClientCredentialsAuthModel.Builder(
-                        settings.PayPalClientId!,
-                        settings.PayPalClientSecret!)
-                    .Build())
-            .Environment(environment)
-            .Build();
-    }
-
-    private static async Task<bool> CapturePayPalOrderAsync(
-        PaypalServerSdkClient client,
-        string paypalOrderId,
-        CancellationToken cancellationToken)
-    {
-        var captureInput = new CaptureOrderInput
-        {
-            Id = paypalOrderId,
-            // Ensure PayPal receives JSON, even when the body is effectively empty.
-            ContentType = "application/json",
-            Body = new OrderCaptureRequest(),
-            Prefer = "return=representation",
-        };
-
-        var response = await client.OrdersController.CaptureOrderAsync(captureInput, cancellationToken);
-
-        if (response.StatusCode is < 200 or >= 300)
-        {
-            return false;
-        }
-
-        var capturedOrder = response.Data;
-        if (capturedOrder is null || capturedOrder.Status is null)
-        {
-            return false;
-        }
-
-        return capturedOrder.Status == OrderStatus.Completed;
-    }
 }
-
