@@ -154,6 +154,12 @@ public static class PayPalEndpoints
             return Task.FromResult(Results.BadRequest("Missing PayPal order token."));
         }
 
+        var expectedOrderId = httpContext.Session.GetString(PayPalSessionKeys.OrderId);
+        if (!string.Equals(expectedOrderId, orderId, StringComparison.Ordinal))
+        {
+            return Task.FromResult(Results.BadRequest("Invalid PayPal order token."));
+        }
+
         // At this point the payer has approved the PayPal order in the browser.
         // We do NOT capture here. Instead, redirect back to checkout with the
         // approved PayPal order ID so the payment processor can capture it later.
