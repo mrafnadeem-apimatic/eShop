@@ -27,6 +27,8 @@ public interface IPayPalOrdersClient
 public sealed class PayPalOrdersClient(PaypalServerSdkClient client, ILogger<PayPalOrdersClient> logger)
     : IPayPalOrdersClient
 {
+    private static readonly TimeSpan PayPalOperationTimeout = TimeSpan.FromSeconds(30);
+
     private readonly PaypalServerSdkClient _client = client;
     private readonly ILogger<PayPalOrdersClient> _logger = logger;
 
@@ -40,7 +42,9 @@ public sealed class PayPalOrdersClient(PaypalServerSdkClient client, ILogger<Pay
 
         try
         {
-            var response = await _client.OrdersController.CaptureOrderAsync(captureInput);
+            var response = await _client.OrdersController
+                .CaptureOrderAsync(captureInput)
+                .WaitAsync(PayPalOperationTimeout, cancellationToken);
 
             var order = response.Data;
             var statusText = order?.Status?.ToString();
@@ -53,6 +57,16 @@ public sealed class PayPalOrdersClient(PaypalServerSdkClient client, ILogger<Pay
                 completed);
 
             return new PayPalCaptureResult(completed, statusText);
+        }
+        catch (TimeoutException e)
+        {
+            _logger.LogError(
+                e,
+                "Timed out after {TimeoutSeconds} seconds while capturing PayPal order {PayPalOrderId}",
+                PayPalOperationTimeout.TotalSeconds,
+                paypalOrderId);
+
+            return new PayPalCaptureResult(false, null);
         }
         catch (ApiException e)
         {

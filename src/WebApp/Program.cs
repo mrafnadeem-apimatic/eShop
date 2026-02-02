@@ -43,6 +43,10 @@ builder.Services.AddSingleton(sp =>
     return new PaypalServerSdk.Standard.PaypalServerSdkClient.Builder()
         .ClientCredentialsAuth(authModel)
         .Environment(environment)
+        .LoggingConfig(config => config
+            .LogLevel(Microsoft.Extensions.Logging.LogLevel.Information)
+            .RequestConfig(reqConfig => reqConfig.Body(false))
+            .ResponseConfig(respConfig => respConfig.Headers(false)))
         .Build();
 });
 

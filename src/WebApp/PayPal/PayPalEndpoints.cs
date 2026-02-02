@@ -81,7 +81,9 @@ public static class PayPalEndpoints
         try
         {
             var ordersController = paypalClient.OrdersController;
-            var response = await ordersController.CreateOrderAsync(createOrderInput);
+            var response = await ordersController
+                .CreateOrderAsync(createOrderInput)
+                .WaitAsync(TimeSpan.FromSeconds(30), httpContext.RequestAborted);
 
             var order = response.Data;
             if (order is null || string.IsNullOrWhiteSpace(order.Id))
