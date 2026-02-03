@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: todo-1770115236091-p60pfg0ha
     content: Add tests for the SDK client wrapper and endpoints in Orderning.API as well as internal linkage. Fix any issues after running them.
-    status: pending
+    status: completed
   - id: checkout-ui-paypal-buttons
     content: Update the Blazor Checkout page to expose PayPal as a payment option and integrate PayPal JS SDK Smart Payment Buttons wired to the new backend endpoints.
     status: pending
