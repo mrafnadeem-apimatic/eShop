@@ -1,4 +1,4 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
@@ -7,6 +7,9 @@ builder.AddRabbitMqEventBus("EventBus")
 
 builder.Services.AddOptions<PaymentOptions>()
     .BindConfiguration(nameof(PaymentOptions));
+
+builder.Services.AddOptions<PayPalOptions>()
+    .BindConfiguration(nameof(PayPalOptions));
 
 var app = builder.Build();
 

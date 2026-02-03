@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 
 internal static class Extensions
 {
@@ -27,6 +27,9 @@ internal static class Extensions
 
         builder.AddRabbitMqEventBus("eventbus")
                .AddEventBusSubscriptions();
+
+        services.AddOptions<PayPalOptions>()
+            .BindConfiguration(nameof(PayPalOptions));
 
         services.AddHttpContextAccessor();
         services.AddTransient<IIdentityService, IdentityService>();

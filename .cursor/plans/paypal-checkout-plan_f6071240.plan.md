@@ -4,7 +4,7 @@ overview: Add a minimal, production-ready PayPal account checkout to the eShop w
 todos:
   - id: paypal-config-options
     content: Add PayPal configuration and options binding to the appropriate backend project(s), sourcing client ID/secret from environment variables.
-    status: pending
+    status: completed
   - id: paypal-client-and-apis
     content: Implement a PayPal .NET Server SDK client wrapper and the create/capture PayPal endpoints in Ordering.API, plus minimal linkage to internal order creation and payment status.
     status: pending
