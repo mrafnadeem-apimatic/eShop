@@ -29,6 +29,10 @@ class OrderEntityTypeConfiguration : IEntityTypeConfiguration<Order>
             .HasForeignKey(o => o.PaymentId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        orderConfiguration
+            .Property(o => o.PayPalOrderId)
+            .HasMaxLength(64);
+
         orderConfiguration.HasOne(o => o.Buyer)
             .WithMany()
             .HasForeignKey(o => o.BuyerId);

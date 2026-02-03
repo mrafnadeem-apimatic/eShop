@@ -16,7 +16,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : 2, // environment variables are not loaded correctly with more than 2 workers
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -37,7 +37,7 @@ export default defineConfig({
     },
     {
       name: 'e2e tests logged in',
-      testMatch: ['**/AddItemTest.spec.ts', '**/RemoveItemTest.spec.ts'],
+      testMatch: ['**/AddItemTest.spec.ts', '**/RemoveItemTest.spec.ts', '**/PayPalCheckoutTest.spec.ts'],
       dependencies: ['setup'],
       use: {
         storageState: STORAGE_STATE,
@@ -91,5 +91,12 @@ export default defineConfig({
     stderr: 'pipe',
     stdout: 'pipe',
     timeout: process.env.CI ? (5 * 60_000) : 60_000,
+    ignoreHTTPSErrors: true,
+    env: {
+      ESHOP_PAYPAL_E2E_TEST_MODE: '1',
+      ESHOP_USE_HTTP_ENDPOINTS: '1',
+      USERNAME1: 'bob',
+      PASSWORD: 'Pass123$'
+    }
   },
 });
