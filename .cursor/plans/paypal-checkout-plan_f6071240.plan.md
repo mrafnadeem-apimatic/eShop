@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: paypal-client-and-apis
     content: Implement a PayPal .NET Server SDK client wrapper and the create/capture PayPal endpoints in Ordering.API, plus minimal linkage to internal order creation and payment status.
-    status: pending
+    status: completed
   - id: todo-1770115236091-p60pfg0ha
     content: Add tests for the SDK client wrapper and endpoints in Orderning.API as well as internal linkage. Fix any issues after running them.
     status: pending

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Http.HttpResults;
 using CardType = eShop.Ordering.API.Application.Queries.CardType;
 using Order = eShop.Ordering.API.Application.Queries.Order;
 
@@ -10,6 +10,7 @@ public static class OrdersApi
 
         api.MapPut("/cancel", CancelOrderAsync);
         api.MapPut("/ship", ShipOrderAsync);
+        api.MapPost("/checkout-paypal", CheckoutWithPayPalAsync);
         api.MapGet("{orderId:int}", GetOrderAsync);
         api.MapGet("/", GetOrdersByUserAsync);
         api.MapGet("/cardtypes", GetCardTypesAsync);
@@ -166,6 +167,74 @@ public static class OrdersApi
             return TypedResults.Ok();
         }
     }
+
+    public static async Task<Results<Ok, BadRequest<string>>> CheckoutWithPayPalAsync(
+        [FromHeader(Name = "x-requestid")] Guid requestId,
+        CheckoutWithPayPalRequest request,
+        [AsParameters] OrderServices services)
+    {
+        services.Logger.LogInformation(
+            "Received PayPal checkout request for user {UserId} with PayPal order {PayPalOrderId}.",
+            request.UserId,
+            request.PayPalOrderId);
+
+        if (requestId == Guid.Empty)
+        {
+            services.Logger.LogWarning("Invalid PayPal checkout request - RequestId is missing - {@Request}", request);
+            return TypedResults.BadRequest("RequestId is missing.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.PayPalOrderId))
+        {
+            return TypedResults.BadRequest("PayPal order id is required.");
+        }
+
+        using (services.Logger.BeginScope(new List<KeyValuePair<string, object>> { new("IdentifiedCommandId", requestId) }))
+        {
+            const string placeholderCardNumber = "0000000000000000";
+            const string placeholderSecurityNumber = "000";
+            var placeholderExpiration = DateTime.UtcNow.AddYears(10);
+            const int placeholderCardTypeId = 1;
+
+            var createOrderCommand = new CreateOrderCommand(
+                request.Items,
+                request.UserId,
+                request.UserName,
+                request.City,
+                request.Street,
+                request.State,
+                request.Country,
+                request.ZipCode,
+                placeholderCardNumber,
+                request.UserName,
+                placeholderExpiration,
+                placeholderSecurityNumber,
+                placeholderCardTypeId,
+                request.PayPalOrderId);
+
+            var requestCreateOrder = new IdentifiedCommand<CreateOrderCommand, bool>(createOrderCommand, requestId);
+
+            services.Logger.LogInformation(
+                "Sending PayPal create order command: {CommandName} - {IdProperty}: {CommandId} ({@Command})",
+                requestCreateOrder.GetGenericTypeName(),
+                nameof(requestCreateOrder.Id),
+                requestCreateOrder.Id,
+                requestCreateOrder);
+
+            var result = await services.Mediator.Send(requestCreateOrder);
+
+            if (result)
+            {
+                services.Logger.LogInformation("PayPal CreateOrderCommand succeeded - RequestId: {RequestId}", requestId);
+            }
+            else
+            {
+                services.Logger.LogWarning("PayPal CreateOrderCommand failed - RequestId: {RequestId}", requestId);
+            }
+
+            return TypedResults.Ok();
+        }
+    }
 }
 
 public record CreateOrderRequest(
@@ -182,4 +251,15 @@ public record CreateOrderRequest(
     string CardSecurityNumber,
     int CardTypeId,
     string Buyer,
+    List<BasketItem> Items);
+
+public record CheckoutWithPayPalRequest(
+    string UserId,
+    string UserName,
+    string City,
+    string Street,
+    string State,
+    string Country,
+    string ZipCode,
+    string PayPalOrderId,
     List<BasketItem> Items);

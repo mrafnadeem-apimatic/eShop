@@ -1,4 +1,6 @@
 using FluentValidation;
+using eShop.Ordering.API;
+using eShop.Ordering.API.Infrastructure.PayPal;
 
 internal static class Extensions
 {
@@ -30,6 +32,8 @@ internal static class Extensions
 
         services.AddOptions<PayPalOptions>()
             .BindConfiguration(nameof(PayPalOptions));
+
+        services.AddSingleton<IPayPalClient, PayPalClient>();
 
         services.AddHttpContextAccessor();
         services.AddTransient<IIdentityService, IdentityService>();
