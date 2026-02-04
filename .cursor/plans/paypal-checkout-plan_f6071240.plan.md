@@ -22,7 +22,7 @@ todos:
     status: completed
   - id: paymentprocessor-adjustment
     content: Adjust PaymentProcessor to skip its simulated payment path for orders already marked as paid via PayPal to avoid double-charging.
-    status: pending
+    status: completed
   - id: todo-1770115301936-3yzit3iwn
     content: Add tests for PaymentProcessor changes. Fix any issues after running them.
     status: pending

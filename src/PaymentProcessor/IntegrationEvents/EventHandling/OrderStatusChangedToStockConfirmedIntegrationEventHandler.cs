@@ -1,14 +1,28 @@
-﻿namespace eShop.PaymentProcessor.IntegrationEvents.EventHandling;
+namespace eShop.PaymentProcessor.IntegrationEvents.EventHandling;
 
 public class OrderStatusChangedToStockConfirmedIntegrationEventHandler(
     IEventBus eventBus,
     IOptionsMonitor<PaymentOptions> options,
+    IOrderingApiClient orderingApiClient,
     ILogger<OrderStatusChangedToStockConfirmedIntegrationEventHandler> logger) :
     IIntegrationEventHandler<OrderStatusChangedToStockConfirmedIntegrationEvent>
 {
     public async Task Handle(OrderStatusChangedToStockConfirmedIntegrationEvent @event)
     {
         logger.LogInformation("Handling integration event: {IntegrationEventId} - ({@IntegrationEvent})", @event.Id, @event);
+
+        // If the order has already been marked as paid (for example, via a PayPal capture
+        // that updated the order status directly in Ordering.API), we skip the simulated
+        // payment path here to avoid double-charging.
+        var alreadyPaid = await orderingApiClient.IsOrderAlreadyPaidAsync(@event.OrderId);
+
+        if (alreadyPaid)
+        {
+            logger.LogInformation(
+                "Order {OrderId} is already paid according to Ordering.API. Skipping simulated payment.",
+                @event.OrderId);
+            return;
+        }
 
         IntegrationEvent orderPaymentIntegrationEvent;
 
