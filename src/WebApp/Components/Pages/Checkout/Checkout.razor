@@ -5,7 +5,7 @@
 @inject BasketState Basket
 @inject NavigationManager Nav
 @inject IJSRuntime JS
-@inject IConfiguration Configuration
+@inject Microsoft.Extensions.Options.IOptions<eShop.WebApp.PayPalOptions> PayPalOptionsAccessor
 @attribute [Authorize]
 @implements IAsyncDisposable
 
@@ -106,7 +106,7 @@
         editContext = new EditContext(Info!);
         extraMessages = new ValidationMessageStore(editContext);
 
-        _paypalClientId = Configuration["PayPalOptions:ClientId"];
+        _paypalClientId = PayPalOptionsAccessor.Value.ClientId;
         _payPalAvailable = !string.IsNullOrWhiteSpace(_paypalClientId);
     }
 
@@ -117,7 +117,7 @@
             return;
         }
 
-        _paypalClientId ??= Configuration["PayPalOptions:ClientId"];
+        _paypalClientId ??= PayPalOptionsAccessor.Value.ClientId;
         if (string.IsNullOrWhiteSpace(_paypalClientId))
         {
             _payPalAvailable = false;

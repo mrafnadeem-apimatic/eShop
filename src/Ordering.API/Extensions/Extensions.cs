@@ -31,7 +31,10 @@ internal static class Extensions
                .AddEventBusSubscriptions();
 
         services.AddOptions<PayPalOptions>()
-            .BindConfiguration(nameof(PayPalOptions));
+            .BindConfiguration(nameof(PayPalOptions))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ClientId), "PayPal client id is not configured.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ClientSecret), "PayPal client secret is not configured.")
+            .ValidateOnStart();
 
         services.AddSingleton<IPayPalClient, PayPalClient>();
 

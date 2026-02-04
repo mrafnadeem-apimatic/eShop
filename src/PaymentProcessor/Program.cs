@@ -9,7 +9,10 @@ builder.Services.AddOptions<PaymentOptions>()
     .BindConfiguration(nameof(PaymentOptions));
 
 builder.Services.AddOptions<PayPalOptions>()
-    .BindConfiguration(nameof(PayPalOptions));
+    .BindConfiguration(nameof(PayPalOptions))
+    .Validate(options => !string.IsNullOrWhiteSpace(options.ClientId), "PayPal client id is not configured.")
+    .Validate(options => !string.IsNullOrWhiteSpace(options.ClientSecret), "PayPal client secret is not configured.")
+    .ValidateOnStart();
 
 builder.Services.AddOptions<OrderingApiOptions>()
     .BindConfiguration(nameof(OrderingApiOptions));

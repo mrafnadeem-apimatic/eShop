@@ -1,6 +1,10 @@
-﻿using eShop.AppHost;
+using eShop.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
+
+// PayPal configuration parameters (single source of truth).
+var payPalClientId = builder.AddParameter("paypal-client-id");
+var payPalClientSecret = builder.AddParameter("paypal-client-secret", secret: true);
 
 builder.AddForwardedHeaders();
 
@@ -40,7 +44,9 @@ var orderingApi = builder.AddProject<Projects.Ordering_API>("ordering-api")
     .WithReference(rabbitMq).WaitFor(rabbitMq)
     .WithReference(orderDb).WaitFor(orderDb)
     .WithHttpHealthCheck("/health")
-    .WithEnvironment("Identity__Url", identityEndpoint);
+    .WithEnvironment("Identity__Url", identityEndpoint)
+    .WithEnvironment("PayPalOptions__ClientId", payPalClientId)
+    .WithEnvironment("PayPalOptions__ClientSecret", payPalClientSecret);
 
 builder.AddProject<Projects.OrderProcessor>("order-processor")
     .WithReference(rabbitMq).WaitFor(rabbitMq)
@@ -48,7 +54,9 @@ builder.AddProject<Projects.OrderProcessor>("order-processor")
     .WaitFor(orderingApi); // wait for the orderingApi to be ready because that contains the EF migrations
 
 builder.AddProject<Projects.PaymentProcessor>("payment-processor")
-    .WithReference(rabbitMq).WaitFor(rabbitMq);
+    .WithReference(rabbitMq).WaitFor(rabbitMq)
+    .WithEnvironment("PayPalOptions__ClientId", payPalClientId)
+    .WithEnvironment("PayPalOptions__ClientSecret", payPalClientSecret);
 
 var webHooksApi = builder.AddProject<Projects.Webhooks_API>("webhooks-api")
     .WithReference(rabbitMq).WaitFor(rabbitMq)
@@ -72,7 +80,8 @@ var webApp = builder.AddProject<Projects.WebApp>("webapp", launchProfileName)
     .WithReference(catalogApi)
     .WithReference(orderingApi)
     .WithReference(rabbitMq).WaitFor(rabbitMq)
-    .WithEnvironment("IdentityUrl", identityEndpoint);
+    .WithEnvironment("IdentityUrl", identityEndpoint)
+    .WithEnvironment("PayPalOptions__ClientId", payPalClientId);
 
 // set to true if you want to use OpenAI
 bool useOpenAI = false;

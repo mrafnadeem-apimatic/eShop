@@ -33,7 +33,11 @@ public sealed class OrderingApiFixture : WebApplicationFactory<Program>, IAsyncL
             config.AddInMemoryCollection(new Dictionary<string, string>
             {
                 { $"ConnectionStrings:{Postgres.Resource.Name}", _postgresConnectionString },
-                { "Identity:Url", IdentityApi.GetEndpoint("http").Url }
+                { "Identity:Url", IdentityApi.GetEndpoint("http").Url },
+                { "PayPalOptions:ClientId", "test-client-id" },
+                { "PayPalOptions:ClientSecret", "test-client-secret" },
+                { "PayPalOptions:Environment", "Sandbox" },
+                { "PayPalOptions:ApiBaseUrl", "https://api-m.sandbox.paypal.com" }
             });
         });
         builder.ConfigureServices(services =>
