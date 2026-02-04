@@ -116,9 +116,16 @@ public static class ReflectionHelpers
             if (!fullName.Contains("PaypalServerSdk.Standard.PaypalServerSdkClient", StringComparison.Ordinal) &&
                 !fullName.Contains(".Controllers.", StringComparison.Ordinal) &&
                 !fullName.Contains("CaptureOrderInput", StringComparison.Ordinal) &&
+                !fullName.Contains("CreateOrderInput", StringComparison.Ordinal) &&
                 !fullName.Contains("GetOrderInput", StringComparison.Ordinal) &&
                 !fullName.EndsWith(".Models.Order", StringComparison.Ordinal) &&
                 !fullName.EndsWith(".Models.OrderStatus", StringComparison.Ordinal) &&
+                !fullName.EndsWith(".Models.OrderRequest", StringComparison.Ordinal) &&
+                !fullName.EndsWith(".Models.PurchaseUnitRequest", StringComparison.Ordinal) &&
+                !fullName.EndsWith(".Models.CheckoutPaymentIntent", StringComparison.Ordinal) &&
+                !fullName.EndsWith(".Models.OrderApplicationContext", StringComparison.Ordinal) &&
+                !fullName.EndsWith(".Models.AmountWithBreakdown", StringComparison.Ordinal) &&
+                !fullName.EndsWith(".Models.Money", StringComparison.Ordinal) &&
                 !fullName.EndsWith(".Utilities.ApiResponse`1", StringComparison.Ordinal))
             {
                 continue;
