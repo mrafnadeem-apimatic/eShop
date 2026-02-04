@@ -25,7 +25,7 @@ todos:
     status: completed
   - id: todo-1770115301936-3yzit3iwn
     content: Add tests for PaymentProcessor changes. Fix any issues after running them.
-    status: pending
+    status: completed
 isProject: false
 ---
 

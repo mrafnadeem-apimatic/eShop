@@ -12,7 +12,7 @@ public interface IOrderingApiClient
     Task<bool> IsOrderAlreadyPaidAsync(int orderId, CancellationToken cancellationToken = default);
 }
 
-internal sealed class OrderingApiClient : IOrderingApiClient
+public sealed class OrderingApiClient : IOrderingApiClient
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
