@@ -37,7 +37,11 @@ export default defineConfig({
     },
     {
       name: 'e2e tests logged in',
-      testMatch: ['**/AddItemTest.spec.ts', '**/RemoveItemTest.spec.ts'],
+      testMatch: [
+        '**/AddItemTest.spec.ts',
+        '**/RemoveItemTest.spec.ts',
+        '**/Checkout*.spec.ts',
+      ],
       dependencies: ['setup'],
       use: {
         storageState: STORAGE_STATE,
@@ -90,6 +94,10 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     stderr: 'pipe',
     stdout: 'pipe',
-    timeout: process.env.CI ? (5 * 60_000) : 60_000,
+    timeout: process.env.CI ? 5 * 60_000 : 3 * 60_000,
+    env: {
+      ...process.env,
+      ESHOP_USE_HTTP_ENDPOINTS: '1',
+    },
   },
 });
