@@ -1,9 +1,13 @@
-﻿@page "/checkout"
+@page "/checkout"
 @using System.Globalization
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.JSInterop
 @inject BasketState Basket
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject IConfiguration Configuration
 @attribute [Authorize]
+@implements IAsyncDisposable
 
 <PageTitle>Checkout | AdventureWorks</PageTitle>
 <SectionContent SectionName="page-header-title">Checkout</SectionContent>
@@ -51,9 +55,22 @@
                 </div>
             </div>
             <div class="form-section">
+                <h2>Payment</h2>
+                <p>Use the built-in card checkout or pay with PayPal.</p>
                 <div class="form-buttons">
                     <a href="cart" class="button button-secondary"><img role="presentation" src="icons/arrow-left.svg" />Back to the shopping bag</a>
-                    <button class="button button-primary" type="submit">Place order</button>
+                    <button class="button button-primary" type="submit">Place order (card)</button>
+                </div>
+                <div class="paypal">
+                    <p>Or pay securely with PayPal:</p>
+                    @if (_payPalAvailable)
+                    {
+                        <div @ref="_paypalButtonsContainer"></div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">PayPal is not available. Please use the card checkout above.</p>
+                    }
                 </div>
             </div>
         </div>
@@ -62,6 +79,14 @@
 </div>
 
 @code {
+    private const string PayPalCurrencyCode = "USD";
+
+    private ElementReference _paypalButtonsContainer;
+    private IJSObjectReference? _paypalModule;
+    private DotNetObjectReference<Checkout>? _dotNetRef;
+    private bool _payPalAvailable;
+    private string? _paypalClientId;
+
     private EditContext editContext = default!;
     private ValidationMessageStore extraMessages = default!;
 
@@ -80,6 +105,37 @@
 
         editContext = new EditContext(Info!);
         extraMessages = new ValidationMessageStore(editContext);
+
+        _paypalClientId = Configuration["PayPalOptions:ClientId"];
+        _payPalAvailable = !string.IsNullOrWhiteSpace(_paypalClientId);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !_payPalAvailable)
+        {
+            return;
+        }
+
+        _paypalClientId ??= Configuration["PayPalOptions:ClientId"];
+        if (string.IsNullOrWhiteSpace(_paypalClientId))
+        {
+            _payPalAvailable = false;
+            return;
+        }
+
+        _paypalModule ??= await JS.InvokeAsync<IJSObjectReference>(
+            "import",
+            "./Components/Pages/Checkout/Checkout.razor.js");
+
+        _dotNetRef ??= DotNetObjectReference.Create(this);
+
+        await _paypalModule.InvokeVoidAsync(
+            "initializePayPalButtons",
+            _dotNetRef,
+            _paypalClientId,
+            PayPalCurrencyCode,
+            _paypalButtonsContainer);
     }
 
     private void PopulateFormWithDefaultInfo()
@@ -127,4 +183,40 @@
 
     private static DateTime? ParseExpiryDate(string? mmyy)
         => DateTime.TryParseExact($"01/{mmyy}", "dd/MM/yy", null, DateTimeStyles.None, out var result) ? result.ToUniversalTime() : null;
+
+    [JSInvokable]
+    public async Task<string> CreatePayPalOrder()
+    {
+        await PerformCustomValidationAsync();
+
+        if (!editContext.Validate())
+        {
+            await InvokeAsync(StateHasChanged);
+            throw new InvalidOperationException("Checkout form is invalid.");
+        }
+
+        return await Basket.CreatePayPalOrderAsync();
+    }
+
+    [JSInvokable]
+    public async Task CompletePayPalCheckout(string paypalOrderId)
+    {
+        if (string.IsNullOrWhiteSpace(paypalOrderId))
+        {
+            throw new ArgumentException("PayPal order id is required.", nameof(paypalOrderId));
+        }
+
+        await Basket.CheckoutWithPayPalAsync(Info, paypalOrderId);
+        Nav.NavigateTo("user/orders");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_paypalModule is not null)
+        {
+            await _paypalModule.DisposeAsync();
+        }
+
+        _dotNetRef?.Dispose();
+    }
 }

@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: checkout-ui-paypal-buttons
     content: Update the Blazor Checkout page to expose PayPal as a payment option and integrate PayPal JS SDK Smart Payment Buttons wired to the new backend endpoints.
-    status: pending
+    status: completed
   - id: todo-1770115273558-1r3a68248
     content: Add playwright tests for the Blazor Checkout page. Fix any issues after running them.
     status: pending
