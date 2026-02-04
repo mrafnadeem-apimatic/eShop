@@ -1,4 +1,5 @@
 @page "/checkout"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using System.Globalization
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.JSInterop
@@ -140,6 +141,20 @@
 
     private void PopulateFormWithDefaultInfo()
     {
+        // HttpContext may not always be available (for example, during certain interactive render flows),
+        // so fall back to an empty checkout info when we can't read claims.
+        if (HttpContext is null || HttpContext.User?.Identity?.IsAuthenticated != true)
+        {
+            Info = new BasketCheckoutInfo
+            {
+                RequestId = Guid.NewGuid()
+            };
+            return;
+        }
+
+        string? ReadClaim(string type)
+            => HttpContext?.User?.Claims.FirstOrDefault(x => x.Type == type)?.Value;
+
         Info = new BasketCheckoutInfo
         {
             Street = ReadClaim("address_street"),
@@ -149,9 +164,6 @@
             ZipCode = ReadClaim("address_zip_code"),
             RequestId = Guid.NewGuid()
         };
-
-        string? ReadClaim(string type)
-            => HttpContext.User.Claims.FirstOrDefault(x => x.Type == type)?.Value;
     }
 
     private async Task HandleSubmitAsync()
