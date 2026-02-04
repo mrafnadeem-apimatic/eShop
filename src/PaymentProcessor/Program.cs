@@ -25,6 +25,8 @@ builder.Services.AddHttpClient<IOrderingApiClient, OrderingApiClient>((sp, clien
     }
 });
 
+builder.Services.AddSingleton<IPayPalClient, PayPalClient>();
+
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
