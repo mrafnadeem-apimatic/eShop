@@ -1,5 +1,5 @@
 @page "/checkout"
-@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@rendermode InteractiveServer
 @using System.Globalization
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.JSInterop
@@ -92,6 +92,7 @@
     private ValidationMessageStore extraMessages = default!;
 
     [SupplyParameterFromForm]
+    [PersistentState]
     public BasketCheckoutInfo Info { get; set; } = default!;
 
     [CascadingParameter]
