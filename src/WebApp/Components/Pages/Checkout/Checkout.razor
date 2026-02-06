@@ -91,8 +91,11 @@
     private EditContext editContext = default!;
     private ValidationMessageStore extraMessages = default!;
 
-    [SupplyParameterFromForm]
     [PersistentState]
+    // This property is meant to persist default values that were fetched during pre-rendering.
+    public BasketCheckoutInfo InitialInfo { get; set; } = default!;
+    
+    [SupplyParameterFromForm]
     public BasketCheckoutInfo Info { get; set; } = default!;
 
     [CascadingParameter]
@@ -100,12 +103,10 @@
 
     protected override void OnInitialized()
     {
-        if (Info is null)
-        {
-            PopulateFormWithDefaultInfo();
-        }
+        InitialInfo ??= PopulateFormWithDefaultInfo();
+        Info ??= InitialInfo;
 
-        editContext = new EditContext(Info!);
+        editContext = new EditContext(Info);
         extraMessages = new ValidationMessageStore(editContext);
 
         _paypalClientId = PayPalOptionsAccessor.Value.ClientId;
@@ -140,23 +141,22 @@
             _paypalButtonsContainer);
     }
 
-    private void PopulateFormWithDefaultInfo()
+    private BasketCheckoutInfo PopulateFormWithDefaultInfo()
     {
         // HttpContext may not always be available (for example, during certain interactive render flows),
         // so fall back to an empty checkout info when we can't read claims.
         if (HttpContext is null || HttpContext.User?.Identity?.IsAuthenticated != true)
         {
-            Info = new BasketCheckoutInfo
+            return new BasketCheckoutInfo
             {
                 RequestId = Guid.NewGuid()
             };
-            return;
         }
 
         string? ReadClaim(string type)
             => HttpContext?.User?.Claims.FirstOrDefault(x => x.Type == type)?.Value;
 
-        Info = new BasketCheckoutInfo
+        return new BasketCheckoutInfo
         {
             Street = ReadClaim("address_street"),
             City = ReadClaim("address_city"),
