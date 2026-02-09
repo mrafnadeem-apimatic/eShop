@@ -1,4 +1,6 @@
-﻿using FluentValidation;
+using FluentValidation;
+using eShop.Ordering.API;
+using eShop.Ordering.API.Infrastructure.PayPal;
 
 internal static class Extensions
 {
@@ -27,6 +29,14 @@ internal static class Extensions
 
         builder.AddRabbitMqEventBus("eventbus")
                .AddEventBusSubscriptions();
+
+        services.AddOptions<PayPalOptions>()
+            .BindConfiguration(nameof(PayPalOptions))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ClientId), "PayPal client id is not configured.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ClientSecret), "PayPal client secret is not configured.")
+            .ValidateOnStart();
+
+        services.AddSingleton<IPayPalClient, PayPalClient>();
 
         services.AddHttpContextAccessor();
         services.AddTransient<IIdentityService, IdentityService>();

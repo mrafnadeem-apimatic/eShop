@@ -1,3 +1,5 @@
-﻿namespace eShop.PaymentProcessor.IntegrationEvents.Events;
+namespace eShop.PaymentProcessor.IntegrationEvents.Events;
 
-public record OrderStatusChangedToStockConfirmedIntegrationEvent(int OrderId) : IntegrationEvent;
+public record OrderStatusChangedToStockConfirmedIntegrationEvent(
+    int OrderId,
+    string ExternalPaymentId) : IntegrationEvent;

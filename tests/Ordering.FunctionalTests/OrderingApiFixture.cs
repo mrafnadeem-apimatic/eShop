@@ -1,6 +1,6 @@
-﻿using Aspire.Hosting;
+using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
-
+using eShop.Ordering.API.Infrastructure.PayPal;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Hosting;
 
@@ -33,12 +33,19 @@ public sealed class OrderingApiFixture : WebApplicationFactory<Program>, IAsyncL
             config.AddInMemoryCollection(new Dictionary<string, string>
             {
                 { $"ConnectionStrings:{Postgres.Resource.Name}", _postgresConnectionString },
-                { "Identity:Url", IdentityApi.GetEndpoint("http").Url }
+                { "Identity:Url", IdentityApi.GetEndpoint("http").Url },
+                { "PayPalOptions:ClientId", "test-client-id" },
+                { "PayPalOptions:ClientSecret", "test-client-secret" },
+                { "PayPalOptions:Environment", "Sandbox" },
+                { "PayPalOptions:ApiBaseUrl", "https://api-m.sandbox.paypal.com" }
             });
         });
         builder.ConfigureServices(services =>
         {
             services.AddSingleton<IStartupFilter>(new AutoAuthorizeStartupFilter());
+            // Override the real PayPal client with a lightweight test implementation
+            // so functional tests don't make external network calls.
+            services.AddSingleton<IPayPalClient, TestPayPalClient>();
         });
         return base.CreateHost(builder);
     }

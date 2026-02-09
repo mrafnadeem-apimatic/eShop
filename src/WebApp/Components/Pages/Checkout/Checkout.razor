@@ -1,9 +1,16 @@
-﻿@page "/checkout"
+@page "/checkout"
+@rendermode InteractiveServer
 @using System.Globalization
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.JSInterop
+@using Microsoft.Extensions.Logging
 @inject BasketState Basket
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject Microsoft.Extensions.Options.IOptions<eShop.WebApp.PayPalOptions> PayPalOptionsAccessor
+@inject ILogger<Checkout> Logger
 @attribute [Authorize]
+@implements IAsyncDisposable
 
 <PageTitle>Checkout | AdventureWorks</PageTitle>
 <SectionContent SectionName="page-header-title">Checkout</SectionContent>
@@ -51,9 +58,22 @@
                 </div>
             </div>
             <div class="form-section">
+                <h2>Payment</h2>
+                <p>Use the built-in card checkout or pay with PayPal.</p>
                 <div class="form-buttons">
                     <a href="cart" class="button button-secondary"><img role="presentation" src="icons/arrow-left.svg" />Back to the shopping bag</a>
-                    <button class="button button-primary" type="submit">Place order</button>
+                    <button class="button button-primary" type="submit">Place order (card)</button>
+                </div>
+                <div class="paypal">
+                    <p>Or pay securely with PayPal:</p>
+                    @if (_payPalAvailable)
+                    {
+                        <div @ref="_paypalButtonsContainer"></div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">PayPal is not available. Please use the card checkout above.</p>
+                    }
                 </div>
             </div>
         </div>
@@ -62,9 +82,21 @@
 </div>
 
 @code {
+    private const string PayPalCurrencyCode = "USD";
+
+    private ElementReference _paypalButtonsContainer;
+    private IJSObjectReference? _paypalModule;
+    private DotNetObjectReference<Checkout>? _dotNetRef;
+    private bool _payPalAvailable;
+    private string? _paypalClientId;
+
     private EditContext editContext = default!;
     private ValidationMessageStore extraMessages = default!;
 
+    [PersistentState]
+    // This property is meant to persist default values that were fetched during pre-rendering.
+    public BasketCheckoutInfo InitialInfo { get; set; } = default!;
+    
     [SupplyParameterFromForm]
     public BasketCheckoutInfo Info { get; set; } = default!;
 
@@ -73,18 +105,83 @@
 
     protected override void OnInitialized()
     {
-        if (Info is null)
-        {
-            PopulateFormWithDefaultInfo();
-        }
+        InitialInfo ??= PopulateFormWithDefaultInfo();
+        Info ??= InitialInfo;
 
-        editContext = new EditContext(Info!);
+        editContext = new EditContext(Info);
         extraMessages = new ValidationMessageStore(editContext);
+
+        _paypalClientId = PayPalOptionsAccessor.Value.ClientId;
+        _payPalAvailable = !string.IsNullOrWhiteSpace(_paypalClientId);
     }
 
-    private void PopulateFormWithDefaultInfo()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        Info = new BasketCheckoutInfo
+        if (!firstRender || !_payPalAvailable)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_paypalClientId))
+        {
+            _payPalAvailable = false;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        try
+        {
+            _paypalModule ??= await JS.InvokeAsync<IJSObjectReference>(
+                "import",
+                "./Components/Pages/Checkout/Checkout.razor.js");
+
+            if (_dotNetRef is null)
+            {
+                _dotNetRef = DotNetObjectReference.Create(this);
+            }
+
+            await _paypalModule.InvokeVoidAsync(
+                "initializePayPalButtons",
+                _dotNetRef,
+                _paypalClientId,
+                PayPalCurrencyCode,
+                _paypalButtonsContainer);
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit already disconnected — safe to ignore.
+        }
+        catch (Exception ex)
+        {
+            _payPalAvailable = false;
+            await InvokeAsync(StateHasChanged);
+
+            if (_dotNetRef is not null)
+            {
+                _dotNetRef.Dispose();
+                _dotNetRef = null;
+            }
+
+            Logger.LogError(ex, "Failed to initialize PayPal Smart Payment Buttons.");
+        }
+    }
+
+    private BasketCheckoutInfo PopulateFormWithDefaultInfo()
+    {
+        // HttpContext may not always be available (for example, during certain interactive render flows),
+        // so fall back to an empty checkout info when we can't read claims.
+        if (HttpContext is null || HttpContext.User?.Identity?.IsAuthenticated != true)
+        {
+            return new BasketCheckoutInfo
+            {
+                RequestId = Guid.NewGuid()
+            };
+        }
+
+        string? ReadClaim(string type)
+            => HttpContext?.User?.Claims.FirstOrDefault(x => x.Type == type)?.Value;
+
+        return new BasketCheckoutInfo
         {
             Street = ReadClaim("address_street"),
             City = ReadClaim("address_city"),
@@ -93,9 +190,6 @@
             ZipCode = ReadClaim("address_zip_code"),
             RequestId = Guid.NewGuid()
         };
-
-        string? ReadClaim(string type)
-            => HttpContext.User.Claims.FirstOrDefault(x => x.Type == type)?.Value;
     }
 
     private async Task HandleSubmitAsync()
@@ -125,6 +219,45 @@
         }
     }
 
-    private static DateTime? ParseExpiryDate(string? mmyy)
-        => DateTime.TryParseExact($"01/{mmyy}", "dd/MM/yy", null, DateTimeStyles.None, out var result) ? result.ToUniversalTime() : null;
+    [JSInvokable]
+    public async Task<string> CreatePayPalOrder()
+    {
+        await PerformCustomValidationAsync();
+
+        if (!editContext.Validate())
+        {
+            await InvokeAsync(StateHasChanged);
+            throw new InvalidOperationException("Checkout form is invalid.");
+        }
+
+        return await Basket.CreatePayPalOrderAsync();
+    }
+
+    [JSInvokable]
+    public async Task CompletePayPalCheckout(string paypalOrderId)
+    {
+        if (string.IsNullOrWhiteSpace(paypalOrderId))
+        {
+            throw new ArgumentException("PayPal order id is required.", nameof(paypalOrderId));
+        }
+
+        await Basket.CheckoutWithPayPalAsync(Info, paypalOrderId);
+        Nav.NavigateTo("user/orders");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_paypalModule is not null)
+            {
+                await _paypalModule.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit already gone — safe to ignore.
+        }
+        _dotNetRef?.Dispose();
+    }
 }

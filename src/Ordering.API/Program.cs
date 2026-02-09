@@ -1,4 +1,4 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddApplicationServices();
@@ -13,9 +13,12 @@ var app = builder.Build();
 app.MapDefaultEndpoints();
 
 var orders = app.NewVersionedApi("Orders");
-
 orders.MapOrdersApiV1()
       .RequireAuthorization();
+
+var payments = app.NewVersionedApi("Payments");
+payments.MapPayPalPaymentsApiV1()
+        .RequireAuthorization();
 
 app.UseDefaultOpenApi();
 app.Run();

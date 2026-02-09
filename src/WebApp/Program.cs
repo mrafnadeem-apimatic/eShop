@@ -1,11 +1,15 @@
-﻿using eShop.WebApp.Components;
-using eShop.ServiceDefaults;
+using eShop.WebApp;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+
+builder.Services.AddOptions<PayPalOptions>()
+    .BindConfiguration(nameof(PayPalOptions))
+    .Validate(options => !string.IsNullOrWhiteSpace(options.ClientId), "PayPal client id is not configured.")
+    .ValidateOnStart();
 
 builder.AddApplicationServices();
 

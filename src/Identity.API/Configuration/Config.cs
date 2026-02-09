@@ -1,4 +1,4 @@
-﻿namespace eShop.Identity.API.Configuration
+namespace eShop.Identity.API.Configuration
 {
     public class Config
     {
@@ -184,6 +184,20 @@
                     AllowedScopes =
                     {
                         "webhooks"
+                    }
+                },
+                new Client
+                {
+                    ClientId = "paymentprocessor",
+                    ClientName = "Payment Processor Service",
+                    AllowedGrantTypes = GrantTypes.ClientCredentials,
+                    ClientSecrets =
+                    {
+                        new Secret("secret".Sha256())
+                    },
+                    AllowedScopes =
+                    {
+                        "orders"
                     }
                 }
             };

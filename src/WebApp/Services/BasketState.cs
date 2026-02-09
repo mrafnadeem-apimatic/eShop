@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using eShop.WebAppComponents.Catalog;
@@ -105,6 +105,64 @@ public class BasketState(
             Buyer: buyerId,
             Items: [.. orderItems]);
         await orderingService.CreateOrder(request, checkoutInfo.RequestId);
+        await DeleteBasketAsync();
+    }
+
+    public async Task<string> CreatePayPalOrderAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var items = await GetBasketItemsAsync();
+
+        if (items.Count == 0)
+        {
+            throw new InvalidOperationException("Your cart is empty.");
+        }
+
+        decimal amount = 0m;
+        foreach (var item in items)
+        {
+            amount += item.UnitPrice * item.Quantity;
+        }
+
+        var request = new CreatePayPalOrderRequest(
+            Amount: amount,
+            Currency: "USD");
+
+        return await orderingService.CreatePayPalOrderAsync(request, cancellationToken);
+    }
+
+    public async Task CheckoutWithPayPalAsync(
+        BasketCheckoutInfo checkoutInfo,
+        string paypalOrderId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(paypalOrderId))
+        {
+            throw new ArgumentException("PayPal order id is required.", nameof(paypalOrderId));
+        }
+
+        if (checkoutInfo.RequestId == default)
+        {
+            checkoutInfo.RequestId = Guid.NewGuid();
+        }
+
+        var buyerId = await authenticationStateProvider.GetBuyerIdAsync() ?? throw new InvalidOperationException("User does not have a buyer ID");
+        var userName = await authenticationStateProvider.GetUserNameAsync() ?? throw new InvalidOperationException("User does not have a user name");
+
+        var orderItems = await FetchBasketItemsAsync();
+
+        var request = new CheckoutWithPayPalRequest(
+            UserId: buyerId,
+            UserName: userName,
+            City: checkoutInfo.City!,
+            Street: checkoutInfo.Street!,
+            State: checkoutInfo.State!,
+            Country: checkoutInfo.Country!,
+            ZipCode: checkoutInfo.ZipCode!,
+            PayPalOrderId: paypalOrderId,
+            Items: [.. orderItems]);
+
+        await orderingService.CheckoutWithPayPalAsync(request, checkoutInfo.RequestId, cancellationToken);
         await DeleteBasketAsync();
     }
 

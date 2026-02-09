@@ -1,4 +1,4 @@
-﻿namespace eShop.Ordering.API.Application.Commands;
+namespace eShop.Ordering.API.Application.Commands;
 
 using eShop.Ordering.Domain.AggregatesModel.OrderAggregate;
 
@@ -38,6 +38,11 @@ public class CreateOrderCommandHandler
         // make sure that consistency is preserved across the whole aggregate
         var address = new Address(message.Street, message.City, message.State, message.Country, message.ZipCode);
         var order = new Order(message.UserId, message.UserName, address, message.CardTypeId, message.CardNumber, message.CardSecurityNumber, message.CardHolderName, message.CardExpiration);
+
+        if (!string.IsNullOrWhiteSpace(message.ExternalPaymentId))
+        {
+            order.SetExternalPaymentId(message.ExternalPaymentId);
+        }
 
         foreach (var item in message.OrderItems)
         {

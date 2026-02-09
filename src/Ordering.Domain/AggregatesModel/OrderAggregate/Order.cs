@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace eShop.Ordering.Domain.AggregatesModel.OrderAggregate;
 
@@ -33,6 +33,11 @@ public class Order
     public IReadOnlyCollection<OrderItem> OrderItems => _orderItems.AsReadOnly();
 
     public int? PaymentId { get; private set; }
+
+    /// <summary>
+    /// Optional identifier for an external payment provider order (for example, a PayPal order id).
+    /// </summary>
+    public string ExternalPaymentId { get; private set; }
 
     public static Order NewDraft()
     {
@@ -94,6 +99,16 @@ public class Order
     {
         BuyerId = buyerId;
         PaymentId = paymentId;
+    }
+
+    public void SetExternalPaymentId(string externalPaymentId)
+    {
+        if (string.IsNullOrWhiteSpace(externalPaymentId))
+        {
+            throw new OrderingDomainException(nameof(externalPaymentId));
+        }
+
+        ExternalPaymentId = externalPaymentId;
     }
     
     public void SetAwaitingValidationStatus()

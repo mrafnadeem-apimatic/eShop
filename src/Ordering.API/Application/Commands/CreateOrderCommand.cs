@@ -1,4 +1,4 @@
-﻿namespace eShop.Ordering.API.Application.Commands;
+namespace eShop.Ordering.API.Application.Commands;
 
 // DDD and CQRS patterns comment: Note that it is recommended to implement immutable Commands
 // In this case, its immutability is achieved by having all the setters as private
@@ -56,6 +56,9 @@ public class CreateOrderCommand
     public int CardTypeId { get; private set; }
 
     [DataMember]
+    public string ExternalPaymentId { get; private set; }
+
+    [DataMember]
     public IEnumerable<OrderItemDTO> OrderItems => _orderItems;
 
     public CreateOrderCommand()
@@ -63,9 +66,21 @@ public class CreateOrderCommand
         _orderItems = new List<OrderItemDTO>();
     }
 
-    public CreateOrderCommand(List<BasketItem> basketItems, string userId, string userName, string city, string street, string state, string country, string zipcode,
-        string cardNumber, string cardHolderName, DateTime cardExpiration,
-        string cardSecurityNumber, int cardTypeId)
+    public CreateOrderCommand(
+        List<BasketItem> basketItems,
+        string userId,
+        string userName,
+        string city,
+        string street,
+        string state,
+        string country,
+        string zipcode,
+        string cardNumber,
+        string cardHolderName,
+        DateTime cardExpiration,
+        string cardSecurityNumber,
+        int cardTypeId,
+        string externalPaymentId = null)
     {
         _orderItems = basketItems.ToOrderItemsDTO().ToList();
         UserId = userId;
@@ -80,6 +95,7 @@ public class CreateOrderCommand
         CardExpiration = cardExpiration;
         CardSecurityNumber = cardSecurityNumber;
         CardTypeId = cardTypeId;
+        ExternalPaymentId = externalPaymentId;
     }
 }
 
