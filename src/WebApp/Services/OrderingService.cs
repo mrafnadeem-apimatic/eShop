@@ -37,7 +37,7 @@ public class OrderingService(HttpClient httpClient)
         return payload.PayPalOrderId;
     }
 
-    public Task CheckoutWithPayPalAsync(
+    public async Task CheckoutWithPayPalAsync(
         CheckoutWithPayPalRequest request,
         Guid requestId,
         CancellationToken cancellationToken = default)
@@ -46,7 +46,8 @@ public class OrderingService(HttpClient httpClient)
         requestMessage.Headers.Add("x-requestid", requestId.ToString());
         requestMessage.Content = JsonContent.Create(request);
 
-        return httpClient.SendAsync(requestMessage, cancellationToken);
+        using var response = await httpClient.SendAsync(requestMessage, cancellationToken);
+        response.EnsureSuccessStatusCode();
     }
 }
 
