@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -39,6 +40,7 @@ public class ServiceToServiceTokenProvider
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IOptionsMonitor<IdentityServiceOptions> _optionsMonitor;
     private readonly ILogger<ServiceToServiceTokenProvider> _logger;
+    private readonly SemaphoreSlim _refreshLock = new(1, 1);
 
     private string _accessToken = string.Empty;
     private DateTimeOffset _expiresAtUtc;
@@ -58,26 +60,37 @@ public class ServiceToServiceTokenProvider
     /// </summary>
     public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default)
     {
-        // Re-use the current token if it is not close to expiry.
+        // Fast path: re-use the current token if it is not close to expiry.
         if (!string.IsNullOrEmpty(_accessToken) && _expiresAtUtc > DateTimeOffset.UtcNow.AddMinutes(1))
         {
             return _accessToken;
         }
 
-        var options = _optionsMonitor.CurrentValue;
-
-        if (string.IsNullOrWhiteSpace(options.Url) ||
-            string.IsNullOrWhiteSpace(options.ClientId) ||
-            string.IsNullOrWhiteSpace(options.ClientSecret) ||
-            string.IsNullOrWhiteSpace(options.Scope))
-        {
-            _logger.LogWarning(
-                "Identity configuration is incomplete. Url, ClientId, ClientSecret and Scope are required to acquire a service-to-service access token.");
-            return string.Empty;
-        }
+        var lockAcquired = false;
 
         try
         {
+            await _refreshLock.WaitAsync(cancellationToken);
+            lockAcquired = true;
+
+            // Double-checked locking: another caller may have refreshed while we were waiting.
+            if (!string.IsNullOrEmpty(_accessToken) && _expiresAtUtc > DateTimeOffset.UtcNow.AddMinutes(1))
+            {
+                return _accessToken;
+            }
+
+            var options = _optionsMonitor.CurrentValue;
+
+            if (string.IsNullOrWhiteSpace(options.Url) ||
+                string.IsNullOrWhiteSpace(options.ClientId) ||
+                string.IsNullOrWhiteSpace(options.ClientSecret) ||
+                string.IsNullOrWhiteSpace(options.Scope))
+            {
+                _logger.LogWarning(
+                    "Identity configuration is incomplete. Url, ClientId, ClientSecret and Scope are required to acquire a service-to-service access token.");
+                return string.Empty;
+            }
+
             var client = _httpClientFactory.CreateClient("Identity");
 
             using var request = new HttpRequestMessage(HttpMethod.Post, "connect/token")
@@ -135,6 +148,13 @@ public class ServiceToServiceTokenProvider
                 ex,
                 "Unexpected error while acquiring a service-to-service access token from the Identity service.");
             return string.Empty;
+        }
+        finally
+        {
+            if (lockAcquired)
+            {
+                _refreshLock.Release();
+            }
         }
     }
 
