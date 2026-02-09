@@ -225,11 +225,17 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (_paypalModule is not null)
+        try
         {
-            await _paypalModule.DisposeAsync();
+            if (_paypalModule is not null)
+            {
+                await _paypalModule.DisposeAsync();
+            }
         }
-
+        catch (JSDisconnectedException)
+        {
+            // Circuit already gone — safe to ignore.
+        }
         _dotNetRef?.Dispose();
     }
 }
