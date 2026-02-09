@@ -55,6 +55,8 @@ builder.AddProject<Projects.OrderProcessor>("order-processor")
 
 builder.AddProject<Projects.PaymentProcessor>("payment-processor")
     .WithReference(rabbitMq).WaitFor(rabbitMq)
+    .WithReference(orderingApi).WaitFor(orderingApi)
+    .WithEnvironment("Identity__Url", identityEndpoint)
     .WithEnvironment("PayPalOptions__ClientId", payPalClientId)
     .WithEnvironment("PayPalOptions__ClientSecret", payPalClientSecret);
 

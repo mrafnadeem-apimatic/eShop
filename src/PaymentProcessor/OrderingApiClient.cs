@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text.Json;
 
 namespace eShop.PaymentProcessor;
@@ -17,11 +18,16 @@ public sealed class OrderingApiClient : IOrderingApiClient
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
     private readonly HttpClient _httpClient;
+    private readonly ServiceToServiceTokenProvider _tokenProvider;
     private readonly ILogger<OrderingApiClient> _logger;
 
-    public OrderingApiClient(HttpClient httpClient, ILogger<OrderingApiClient> logger)
+    public OrderingApiClient(
+        HttpClient httpClient,
+        ServiceToServiceTokenProvider tokenProvider,
+        ILogger<OrderingApiClient> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _tokenProvider = tokenProvider ?? throw new ArgumentNullException(nameof(tokenProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -29,9 +35,18 @@ public sealed class OrderingApiClient : IOrderingApiClient
     {
         try
         {
-            using var response = await _httpClient.GetAsync(
-                $"api/orders/{orderId}?api-version=1.0",
-                cancellationToken);
+            var requestUri = $"api/orders/{orderId}?api-version=1.0";
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+
+            var accessToken = await _tokenProvider.GetAccessTokenAsync(cancellationToken);
+
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            }
+
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
 
             if (response.StatusCode == HttpStatusCode.NotFound)
             {

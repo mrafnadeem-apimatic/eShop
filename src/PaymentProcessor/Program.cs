@@ -17,6 +17,20 @@ builder.Services.AddOptions<PayPalOptions>()
 builder.Services.AddOptions<OrderingApiOptions>()
     .BindConfiguration(nameof(OrderingApiOptions));
 
+builder.Services.AddOptions<IdentityServiceOptions>()
+    .BindConfiguration("Identity");
+
+builder.Services.AddHttpClient("Identity", (sp, client) =>
+{
+    var optionsMonitor = sp.GetRequiredService<IOptionsMonitor<IdentityServiceOptions>>();
+    var options = optionsMonitor.CurrentValue;
+
+    if (!string.IsNullOrWhiteSpace(options.Url))
+    {
+        client.BaseAddress = new Uri(options.Url);
+    }
+});
+
 builder.Services.AddHttpClient<IOrderingApiClient, OrderingApiClient>((sp, client) =>
 {
     var optionsMonitor = sp.GetRequiredService<IOptionsMonitor<OrderingApiOptions>>();
@@ -27,6 +41,8 @@ builder.Services.AddHttpClient<IOrderingApiClient, OrderingApiClient>((sp, clien
         client.BaseAddress = new Uri(options.BaseUrl);
     }
 });
+
+builder.Services.AddSingleton<ServiceToServiceTokenProvider>();
 
 builder.Services.AddSingleton<IPayPalClient, PayPalClient>();
 
