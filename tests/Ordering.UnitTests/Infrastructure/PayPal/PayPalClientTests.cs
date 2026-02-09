@@ -34,7 +34,6 @@ public sealed class PayPalClientTests
             ClientId = "client-id",
             ClientSecret = "client-secret",
             Environment = "Sandbox",
-            ApiBaseUrl = "https://api-m.sandbox.paypal.com",
         });
 
         ILogger<PayPalClient> logger = null!;
@@ -78,7 +77,6 @@ public sealed class PayPalClientTests
             ClientId = "",
             ClientSecret = "client-secret",
             Environment = "Sandbox",
-            ApiBaseUrl = "https://api-m.sandbox.paypal.com",
         });
 
         var logger = Substitute.For<ILogger<PayPalClient>>();
@@ -104,7 +102,6 @@ public sealed class PayPalClientTests
             ClientId = "client-id",
             ClientSecret = "   ",
             Environment = "Sandbox",
-            ApiBaseUrl = "https://api-m.sandbox.paypal.com",
         });
 
         var logger = Substitute.For<ILogger<PayPalClient>>();
@@ -180,7 +177,6 @@ public sealed class PayPalClientTests
             ClientId = "client-id",
             ClientSecret = "client-secret",
             Environment = "Sandbox",
-            ApiBaseUrl = "https://api-m.sandbox.paypal.com",
         });
 
         var logger = Substitute.For<ILogger<PayPalClient>>();

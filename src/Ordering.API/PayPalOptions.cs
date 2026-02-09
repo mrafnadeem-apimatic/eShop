@@ -16,10 +16,5 @@ public class PayPalOptions
     /// Target PayPal environment, e.g. "Sandbox" or "Live".
     /// </summary>
     public string Environment { get; set; }
-
-    /// <summary>
-    /// Base URL for the PayPal Orders v2 API (e.g. https://api-m.sandbox.paypal.com).
-    /// </summary>
-    public string ApiBaseUrl { get; set; }
 }
 
