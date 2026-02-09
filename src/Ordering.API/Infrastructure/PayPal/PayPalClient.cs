@@ -104,6 +104,7 @@ public sealed class PayPalClient : IPayPalClient
                         {
                             CurrencyCode = currencyCode,
                         //  MValue is required and must be formatted as a string.
+                        //  We assume that we only use 2-decimal currencies.
                             MValue = amount.ToString("0.00", CultureInfo.InvariantCulture),
                         },
                         CustomId = reference,
