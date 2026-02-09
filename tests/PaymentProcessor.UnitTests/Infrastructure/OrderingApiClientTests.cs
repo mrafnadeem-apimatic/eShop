@@ -21,7 +21,12 @@ public sealed class OrderingApiClientTests
         };
 
         var logger = Substitute.For<ILogger<OrderingApiClient>>();
-        var client = new OrderingApiClient(httpClient, logger);
+        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        var optionsMonitor = Substitute.For<IOptionsMonitor<IdentityServiceOptions>>();
+        optionsMonitor.CurrentValue.Returns(new IdentityServiceOptions());
+        var tokenLogger = Substitute.For<ILogger<ServiceToServiceTokenProvider>>();
+        var tokenProvider = new ServiceToServiceTokenProvider(httpClientFactory, optionsMonitor, tokenLogger);
+        var client = new OrderingApiClient(httpClient, tokenProvider, logger);
 
         // Act
         var result = await client.IsOrderAlreadyPaidAsync(1, CancellationToken.None);
@@ -50,7 +55,12 @@ public sealed class OrderingApiClientTests
         };
 
         var logger = Substitute.For<ILogger<OrderingApiClient>>();
-        var client = new OrderingApiClient(httpClient, logger);
+        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        var optionsMonitor = Substitute.For<IOptionsMonitor<IdentityServiceOptions>>();
+        optionsMonitor.CurrentValue.Returns(new IdentityServiceOptions());
+        var tokenLogger = Substitute.For<ILogger<ServiceToServiceTokenProvider>>();
+        var tokenProvider = new ServiceToServiceTokenProvider(httpClientFactory, optionsMonitor, tokenLogger);
+        var client = new OrderingApiClient(httpClient, tokenProvider, logger);
 
         // Act
         var result = await client.IsOrderAlreadyPaidAsync(2, CancellationToken.None);
@@ -74,7 +84,12 @@ public sealed class OrderingApiClientTests
         };
 
         var logger = Substitute.For<ILogger<OrderingApiClient>>();
-        var client = new OrderingApiClient(httpClient, logger);
+        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        var optionsMonitor = Substitute.For<IOptionsMonitor<IdentityServiceOptions>>();
+        optionsMonitor.CurrentValue.Returns(new IdentityServiceOptions());
+        var tokenLogger = Substitute.For<ILogger<ServiceToServiceTokenProvider>>();
+        var tokenProvider = new ServiceToServiceTokenProvider(httpClientFactory, optionsMonitor, tokenLogger);
+        var client = new OrderingApiClient(httpClient, tokenProvider, logger);
 
         // Act
         var result = await client.IsOrderAlreadyPaidAsync(3, CancellationToken.None);

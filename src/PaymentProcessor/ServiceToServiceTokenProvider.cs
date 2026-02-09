@@ -34,7 +34,7 @@ public sealed class IdentityServiceOptions
 /// <summary>
 /// Obtains and caches access tokens for service-to-service calls using the client credentials flow.
 /// </summary>
-public sealed class ServiceToServiceTokenProvider
+public class ServiceToServiceTokenProvider
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IOptionsMonitor<IdentityServiceOptions> _optionsMonitor;
