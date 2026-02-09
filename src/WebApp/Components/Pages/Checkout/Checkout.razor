@@ -125,6 +125,7 @@
         if (string.IsNullOrWhiteSpace(_paypalClientId))
         {
             _payPalAvailable = false;
+            await InvokeAsync(StateHasChanged);
             return;
         }
 
@@ -153,6 +154,7 @@
         catch (Exception ex)
         {
             _payPalAvailable = false;
+            await InvokeAsync(StateHasChanged);
 
             if (_dotNetRef is not null)
             {
