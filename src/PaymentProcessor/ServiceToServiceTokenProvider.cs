@@ -56,7 +56,7 @@ public class ServiceToServiceTokenProvider
     }
 
     /// <summary>
-    /// Returns a valid access token for calling downstream services, or null if one cannot be acquired.
+    /// Returns a valid access token for calling downstream services, or empty string if one cannot be acquired.
     /// </summary>
     public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default)
     {
