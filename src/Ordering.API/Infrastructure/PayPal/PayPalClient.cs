@@ -115,7 +115,7 @@ public sealed class PayPalClient : IPayPalClient
 
         try
         {
-            var response = await ordersController.CreateOrderAsync(createOrderInput);
+            var response = await ordersController.CreateOrderAsync(createOrderInput, cancellationToken);
             var order = response.Data;
 
             if (string.IsNullOrWhiteSpace(order.Id))
@@ -161,7 +161,7 @@ public sealed class PayPalClient : IPayPalClient
 
         try
         {
-            var response = await ordersController.CaptureOrderAsync(captureOrderInput);
+            var response = await ordersController.CaptureOrderAsync(captureOrderInput, cancellationToken);
             var order = response.Data;
 
             var purchaseUnit = order.PurchaseUnits?.FirstOrDefault();
