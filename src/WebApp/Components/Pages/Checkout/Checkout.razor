@@ -217,9 +217,6 @@
         }
     }
 
-    private static DateTime? ParseExpiryDate(string? mmyy)
-        => DateTime.TryParseExact($"01/{mmyy}", "dd/MM/yy", null, DateTimeStyles.None, out var result) ? result.ToUniversalTime() : null;
-
     [JSInvokable]
     public async Task<string> CreatePayPalOrder()
     {
