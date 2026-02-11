@@ -49,6 +49,7 @@ builder.Services.AddSingleton<PaypalServerSdkClient>(sp =>
 });
 
 builder.Services.AddScoped<IPaymentService, PayPalPaymentService>();
+builder.Services.AddScoped<IPayPalCaptureService, PayPalCaptureService>();
 
 var app = builder.Build();
 

@@ -10,22 +10,22 @@ todos:
     status: completed
   - id: migrate-webapp-create-order-endpoint
     content: Refactor WebApp PayPalEndpoints to use a new IPayPalCheckoutService that calls the SDK to create orders instead of manual HttpClient and JSON.
-    status: in_progress
+    status: completed
   - id: preserve-paypal-session-and-e2e-mode
     content: Ensure WebApp session handling, /paypal/return and /paypal/cancel behavior, and ESHOP_PAYPAL_E2E_TEST_MODE semantics remain unchanged after migration.
-    status: pending
+    status: completed
   - id: migrate-paymentprocessor-capture-flow
     content: Refactor PayPalPaymentService in PaymentProcessor to use an IPayPalCaptureService backed by the SDK for capturing orders instead of manual OAuth and capture HTTP calls.
-    status: pending
+    status: completed
   - id: update-paymentprocessor-tests-for-sdk
     content: Update PaymentProcessor unit tests (PayPalPaymentServiceTests) to mock the new capture abstraction rather than HttpClient and to verify integration events remain correct.
-    status: pending
+    status: completed
   - id: implement-errors-logging-and-timeouts
     content: Standardize error handling, logging, and HTTP timeouts for SDK-based PayPal calls in both WebApp and PaymentProcessor, optionally adding Polly-based retries if desired.
-    status: pending
+    status: completed
   - id: run-e2e-and-sandbox-validation
     content: Run and adjust E2E and Sandbox tests to confirm the full PayPal flow (create, approve, return, place order, capture) still works and satisfies the non-optional requirements in AGENTS.md.
-    status: pending
+    status: completed
 isProject: false
 ---
 
