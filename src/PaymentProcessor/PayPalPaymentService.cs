@@ -18,13 +18,11 @@ public sealed class PayPalPaymentService(
     {
         var settings = _options.CurrentValue;
 
-        // If PayPal is not configured, fall back to the existing simulated payment behavior.
-        if (!settings.UsePayPal ||
-            string.IsNullOrWhiteSpace(settings.PayPalClientId) ||
-            string.IsNullOrWhiteSpace(settings.PayPalClientSecret))
+        // If PayPal is disabled, fall back to the existing simulated payment behavior.
+        if (!settings.UsePayPal)
         {
             _logger.LogInformation(
-                "PayPal not configured or disabled; falling back to PaymentSucceeded flag for order {OrderId}",
+                "PayPal disabled; falling back to PaymentSucceeded flag for order {OrderId}",
                 orderId);
 
             return settings.PaymentSucceeded;

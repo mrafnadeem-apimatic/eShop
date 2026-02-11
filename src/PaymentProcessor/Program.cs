@@ -14,6 +14,20 @@ builder.AddRabbitMqEventBus("EventBus")
 builder.Services.AddOptions<PaymentOptions>()
     .BindConfiguration(nameof(PaymentOptions));
 
+// Validate critical PayPal configuration early so we fail fast when
+// PaymentOptions is configured to use PayPal but credentials are missing.
+var paymentOptions = new PaymentOptions();
+builder.Configuration.GetSection(nameof(PaymentOptions)).Bind(paymentOptions);
+
+if (paymentOptions.UsePayPal &&
+    (string.IsNullOrWhiteSpace(paymentOptions.PayPalClientId) ||
+     string.IsNullOrWhiteSpace(paymentOptions.PayPalClientSecret)))
+{
+    throw new InvalidOperationException(
+        "PaymentOptions is configured to use PayPal but PayPalClientId or PayPalClientSecret is missing. " +
+        "Either disable PayPal by setting PaymentOptions:UsePayPal to false or provide valid credentials.");
+}
+
 // HTTP client used to query Ordering.API for order totals before invoking PayPal.
 // Use service discovery so this works in containerized and cloud environments.
 builder.Services.AddHttpClient<IOrderingApiClient, OrderingApiClient>(client =>
