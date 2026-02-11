@@ -1,3 +1,9 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using PaypalServerSdk.Standard.Authentication;
+using PaypalEnvironment = PaypalServerSdk.Standard.Environment;
+using PaypalServerSdkClient = PaypalServerSdk.Standard.PaypalServerSdkClient;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
@@ -16,8 +22,31 @@ builder.Services.AddHttpClient<IOrderingApiClient, OrderingApiClient>(client =>
     })
     .AddClientCredentialsToken("ServiceAuth");
 
-// HTTP client used to talk to the external PayPal REST API
-builder.Services.AddHttpClient("paypal");
+// PayPal SDK client configuration
+builder.Services.AddSingleton<PaypalServerSdkClient>(sp =>
+{
+    var optionsMonitor = sp.GetRequiredService<IOptionsMonitor<PaymentOptions>>();
+    var settings = optionsMonitor.CurrentValue;
+    var logger = sp.GetRequiredService<ILogger<PaypalServerSdkClient>>();
+
+    var clientId = settings.PayPalClientId ?? string.Empty;
+    var clientSecret = settings.PayPalClientSecret ?? string.Empty;
+    var environment = settings.PayPalEnvironment;
+
+    var paypalEnvironment = string.Equals(environment, "Live", StringComparison.OrdinalIgnoreCase)
+        ? PaypalEnvironment.Production
+        : PaypalEnvironment.Sandbox;
+
+    return new PaypalServerSdkClient.Builder()
+        .ClientCredentialsAuth(new ClientCredentialsAuthModel.Builder(clientId, clientSecret).Build())
+        .Environment(paypalEnvironment)
+        .LoggingConfig(config => config
+            .Logger(logger)
+            .LogLevel(LogLevel.Information))
+        .HttpClientConfig(config => config
+            .Timeout(TimeSpan.FromSeconds(60)))
+        .Build();
+});
 
 builder.Services.AddScoped<IPaymentService, PayPalPaymentService>();
 

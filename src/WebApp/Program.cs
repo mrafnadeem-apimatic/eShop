@@ -1,6 +1,11 @@
 ﻿using eShop.WebApp.Components;
 using eShop.ServiceDefaults;
 using eShop.WebApp.PayPal;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using PaypalServerSdk.Standard.Authentication;
+using PaypalEnvironment = PaypalServerSdk.Standard.Environment;
+using PaypalServerSdkClient = PaypalServerSdk.Standard.PaypalServerSdkClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +20,31 @@ builder.Services.AddSession(options =>
 {
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+});
+
+// PayPal SDK client configuration
+builder.Services.AddSingleton<PaypalServerSdkClient>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var logger = sp.GetRequiredService<ILogger<PaypalServerSdkClient>>();
+
+    var clientId = configuration["PayPal:ClientId"] ?? string.Empty;
+    var clientSecret = configuration["PayPal:ClientSecret"] ?? string.Empty;
+    var environment = configuration["PayPal:Environment"];
+
+    var paypalEnvironment = string.Equals(environment, "Live", StringComparison.OrdinalIgnoreCase)
+        ? PaypalEnvironment.Production
+        : PaypalEnvironment.Sandbox;
+
+    return new PaypalServerSdkClient.Builder()
+        .ClientCredentialsAuth(new ClientCredentialsAuthModel.Builder(clientId, clientSecret).Build())
+        .Environment(paypalEnvironment)
+        .LoggingConfig(config => config
+            .Logger(logger)
+            .LogLevel(LogLevel.Information))
+        .HttpClientConfig(config => config
+            .Timeout(TimeSpan.FromSeconds(60)))
+        .Build();
 });
 
 builder.AddApplicationServices();

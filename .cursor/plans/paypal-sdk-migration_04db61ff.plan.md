@@ -4,13 +4,13 @@ overview: Migrate the existing PayPal HTTP-based integration in WebApp and Payme
 todos:
   - id: add-paypal-sdk-dependencies
     content: Add the PaypalServerSdk .NET Server SDK v2.0.0 NuGet package to the WebApp and PaymentProcessor projects.
-    status: pending
+    status: completed
   - id: configure-paypal-sdk-clients
     content: Register a singleton PaypalServerSdkClient in DI for WebApp and PaymentProcessor, mapping existing PayPal configuration (client ID/secret, environment) and configuring timeouts and logging.
-    status: pending
+    status: completed
   - id: migrate-webapp-create-order-endpoint
     content: Refactor WebApp PayPalEndpoints to use a new IPayPalCheckoutService that calls the SDK to create orders instead of manual HttpClient and JSON.
-    status: pending
+    status: in_progress
   - id: preserve-paypal-session-and-e2e-mode
     content: Ensure WebApp session handling, /paypal/return and /paypal/cancel behavior, and ESHOP_PAYPAL_E2E_TEST_MODE semantics remain unchanged after migration.
     status: pending
