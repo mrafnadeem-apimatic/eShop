@@ -79,13 +79,10 @@ sequenceDiagram
     - Configure logging so sensitive headers are masked and request/response bodies are only logged at appropriate levels to avoid credential leakage (FR-10).
     - Configure HTTP timeout via `.HttpClientConfig(config => config.Timeout(TimeSpan.FromSeconds(X)))` to satisfy FR-14 (bounded call duration).
   - If per-AGENTS retry behavior is desired beyond what the SDK provides, plan to wrap calls in Polly policies at the application level (Phase 4), not inside the SDK client itself.
-- **Delegation / parallelization**
-  - **Delegate?** Good candidate for a single infrastructure-focused agent who understands DI and configuration.
-  - **Parallelizable?** Mostly self-contained but should complete before Phases 2 and 3 start, because those phases depend on the DI-registered `PaypalServerSdkClient`.
-- **Decision points for you**
-  - **Timeout value**: choose a default (e.g. 30–60 seconds) that balances user experience and long-running captures (FR-14).
-  - **Log verbosity**: decide whether to log request/response bodies for PayPal calls in non-production; for production, recommended to log only metadata and masked headers.
-  - **Retry strategy**: confirm whether you want explicit retry policies (e.g. up to 2–3 attempts with exponential backoff and jitter) implemented via Polly around SDK calls.
+- **Decision points**
+  - **Timeout value**: choose a default of 60 seconds (FR-14).
+  - **Log verbosity**: Log only metadata and masked headers.
+  - **Retry strategy**: explicit retry policies (e.g. up to 2–3 attempts with exponential backoff and jitter) implemented via Polly around SDK calls.
 
 ---
 
@@ -112,12 +109,9 @@ sequenceDiagram
     - `/paypal/return` must still validate the `token` (or equivalent) against the session-stored ID and only mark the checkout as “paid” if they match (FR-3, FR-9).
     - `/paypal/cancel` must still redirect back to checkout with the same query parameters and messaging.
   - Ensure any errors from `CreateOrderAsync` (e.g. `ApiException`, non-2xx status codes) are handled and logged with sufficient context (basket ID, user, amount, PayPal status) and surfaced as the same user-facing error/redirect as the current implementation (FR-12).
-- **Delegation / parallelization**
-  - **Delegate?** Strong candidate for a WebApp-focused agent familiar with minimal APIs and Blazor.
-  - **Parallelizable?** Can proceed in parallel with Phase 3 (PaymentProcessor migration) once Phase 1 has established the SDK client registration.
-- **Decision points for you**
-  - **Abstraction level**: decide whether you want a thin wrapper (`IPayPalCheckoutService`) or to inject `PaypalServerSdkClient` directly into endpoints. Wrapper is recommended for testability and to avoid scattering SDK-specific types across the WebApp.
-  - **Order fields**: confirm whether to match the existing order description/reference IDs exactly (for diagnostics) or keep the SDK usage minimal (only amount/currency). The plan assumes you’ll mirror current semantics as much as practical.
+- **Decision points**
+  - **Abstraction level**: use a thin wrapper (`IPayPalCheckoutService`) for testability and to avoid scattering SDK-specific types across the WebApp.
+  - **Order fields**: in SDK usage, match the existing order description/reference IDs exactly (for diagnostics). The plan assumes we’ll mirror current semantics as much as practical.
 
 ---
 
@@ -135,21 +129,18 @@ sequenceDiagram
   - Introduce a PaymentProcessor-level abstraction such as `IPayPalCaptureService` that uses the SDK’s `OrdersController`:
     - Method like `Task<bool> CaptureOrderAsync(string paypalOrderId, CancellationToken ct)` that returns success/failure; optionally also returns status text/details for logging.
     - Internally, construct a `CaptureOrderInput` with the PayPal order ID and call `ordersController.CaptureOrderAsync`.
-    - Consider `Prefer = "return=minimal"` vs `"return=representation"` depending on how much detail you want for logging.
+    - Use `Prefer = "return=minimal"` .
   - Refactor `PayPalPaymentService.ProcessPaymentAsync` to:
     - Preserve existing preconditions: only attempt capture when `PaymentOptions.UsePayPal` is true and the retrieved order has a non-empty `PayPalOrderId`; otherwise fall back to simulated `PaymentSucceeded` behavior as today (even though it’s optional, this keeps current behavior).
     - Call `IPayPalCaptureService.CaptureOrderAsync` instead of manual OAuth + capture routes.
     - Interpret the SDK response so that a completed capture maps to the existing notion of “payment succeeded” (e.g. status `COMPLETED`) and anything else maps to “failed”, logging relevant details but not sensitive data (FR-10, FR-12).
     - Publish `OrderPaymentSucceededIntegrationEvent` / `OrderPaymentFailedIntegrationEvent` with the same payloads as before (FR-4, FR-11, FR-15).
   - Update DI in `Program.cs`:
-    - Remove or de-emphasize the dedicated PayPal `HttpClient` registration, as the SDK manages HTTP internally.
+    - Remove the dedicated PayPal `HttpClient` registration, as the SDK manages HTTP internally.
     - Register `IPayPalCaptureService` and ensure it receives the configured `PaypalServerSdkClient` from Phase 1.
-- **Delegation / parallelization**
-  - **Delegate?** Good candidate for a backend/integration-focused agent comfortable with messaging and domain events.
-  - **Parallelizable?** Can run in parallel with Phase 2 (WebApp migration) once Phase 1’s SDK and configuration wiring are done.
-- **Decision points for you**
-  - **Capture response detail**: choose whether the service should log full `Order`/capture details (with masking) or only high-level status, considering observability vs log volume.
-  - **Error classification**: decide how strictly to treat soft failures (e.g. 422 validation vs transient 5xx) in terms of retry vs immediate integration-event failure; Phase 4 will implement the chosen policy.
+- **Decision points**
+  - **Capture response detail**: the service should log only high-level status, considering observability vs log volume.
+  - **Error classification**: always retry first, then integration-event failure except when getting a validation error code like 422 or 400, in which case immediate integration-event failure; Phase 4 will implement the chosen policy.
 
 ---
 
@@ -164,12 +155,9 @@ sequenceDiagram
   - Implement bounded timeouts using the SDK’s `HttpClientConfig` builder for both processes (if not fully configured in Phase 1).
   - If you opt into explicit retries, wrap SDK calls in small helper methods that apply a Polly policy (e.g. transient HTTP and 5xx statuses) with exponential backoff and an overall deadline to avoid unbounded retries.
   - Verify that no logs include client IDs, client secrets, or OAuth tokens (FR-10).
-- **Delegation / parallelization**
-  - **Delegate?** Could be handled by the same agents working on Phases 2 and 3 or by a separate cross-cutting concerns agent.
-  - **Parallelizable?** Much of this can be implemented alongside Phases 2 and 3, but final tuning and validation should be done after basic SDK flows are working.
-- **Decision points for you**
-  - **Retry policy shape**: confirm the maximum number of retries, backoff schedule, and which error classes are considered retryable vs fatal.
-  - **Minimum logging baseline**: agree on what fields are mandatory in logs for PayPal failures to support production diagnostics.
+- **Decision points**
+  - **Retry policy shape**: the maximum number of retries is 3 with exponential backoff, and retries should not happen for validation errors.
+  - **Minimum logging baseline**: keep minimum amount of fields in logs for PayPal failures to support production diagnostics.
 
 ---
 
@@ -190,15 +178,14 @@ sequenceDiagram
     - Return with valid session.
     - Place order with `PayPalOrderId`.
     - Confirm PaymentProcessor captures successfully and emits the same success/failure events as before (FR-21).
-- **Delegation / parallelization**
-  - **Delegate?** Can be a QA/automation-focused agent or owned by the same engineers implementing code changes.
-  - **Parallelizable?** Unit test updates for PaymentProcessor can start once Phase 3’s abstractions are in place; E2E validation should be last to confirm the whole flow.
-- **Decision points for you**
-  - **Test depth vs time**: decide how much additional coverage (e.g. negative-path E2E scenarios like canceled PayPal approvals) you want beyond the mandatory happy-path FR-21 tests.
+- **When to do this phase**
+  - Unit test updates for PaymentProcessor can start once Phase 3’s abstractions are in place; E2E validation should be last to confirm the whole flow.
+- **Decision points**
+  - **Test depth vs time**: make the mandatory happy-path FR-21 tests pass.
 
 ---
 
-## Natural breakpoints summary
+## Natural breakpoints summary for agents building this plan
 
 - **Breakpoint A – After Phase 1**: SDK packages added and `PaypalServerSdkClient` registered with configuration in both WebApp and PaymentProcessor.
   - **Good handoff**: from a platform/infrastructure agent to feature-focused agents handling WebApp and PaymentProcessor migrations.
