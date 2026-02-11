@@ -1,6 +1,6 @@
 # Product Requirements Doc for Migration
 
-Here are **product-level requirements** for migrating the current PayPal integration to the official PayPal .NET Server SDK (PayPalServerSDK). The base branch for this migration will be [mrafnadeem-apimatic/eShop at MAli/paypal\_new\_agent](https://github.com/mrafnadeem-apimatic/eShop/tree/MAli/paypal_new_agent).
+Here are **product-level requirements** for migrating the current PayPal integration to the official PayPal .NET Server SDK (PayPalServerSDK) version 2.0.0. The base branch for this migration will be [mrafnadeem-apimatic/eShop at MAli/paypal\_new\_agent](https://github.com/mrafnadeem-apimatic/eShop/tree/MAli/paypal_new_agent).
 
 ---
 
