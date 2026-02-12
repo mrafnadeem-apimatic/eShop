@@ -53,6 +53,23 @@ public sealed class PayPalCheckoutService : IPayPalCheckoutService
             throw new ArgumentOutOfRangeException(nameof(total), "Total must be greater than zero.");
         }
 
+        if (currency is null)
+        {
+            throw new ArgumentNullException(nameof(currency));
+        }
+
+        if (string.IsNullOrWhiteSpace(currency))
+        {
+            throw new ArgumentException("Currency must not be empty.", nameof(currency));
+        }
+
+        if (currency.Length != 3 || !currency.All(c => c is >= 'A' and <= 'Z'))
+        {
+            throw new ArgumentException(
+                "Currency must be a 3-letter uppercase ISO-4217 code (e.g. \"USD\").",
+                nameof(currency));
+        }
+
         var ordersController = _client.OrdersController;
 
         var createOrderInput = new CreateOrderInput
@@ -66,7 +83,7 @@ public sealed class PayPalCheckoutService : IPayPalCheckoutService
                     {
                         Amount = new AmountWithBreakdown
                         {
-                            CurrencyCode = currency,
+                            CurrencyCode = currency, // Only 2-decimal currencies are supported.
                             MValue = total.ToString("F2", CultureInfo.InvariantCulture)
                         }
                     }
