@@ -41,6 +41,21 @@
         {
             return new List<Client>
             {
+                // Service-to-service client used by PaymentProcessor to call Ordering.API
+                new Client
+                {
+                    ClientId = "paymentprocessor",
+                    ClientName = "Payment Processor Service Client",
+                    AllowedGrantTypes = GrantTypes.ClientCredentials,
+                    ClientSecrets =
+                    {
+                        new Secret("secret".Sha256())
+                    },
+                    AllowedScopes = new List<string>
+                    {
+                        "orders"
+                    }
+                },
                 new Client
                 {
                     ClientId = "maui",

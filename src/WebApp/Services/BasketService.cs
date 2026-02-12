@@ -1,20 +1,25 @@
 ﻿using eShop.Basket.API.Grpc;
 using GrpcBasketItem = eShop.Basket.API.Grpc.BasketItem;
 using GrpcBasketClient = eShop.Basket.API.Grpc.Basket.BasketClient;
+using Grpc.Core;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 
 namespace eShop.WebApp.Services;
 
-public class BasketService(GrpcBasketClient basketClient)
+public class BasketService(GrpcBasketClient basketClient, IHttpContextAccessor httpContextAccessor)
 {
     public async Task<IReadOnlyCollection<BasketQuantity>> GetBasketAsync()
     {
-        var result = await basketClient.GetBasketAsync(new ());
+        var metadata = await CreateAuthMetadataAsync();
+        var result = await basketClient.GetBasketAsync(new GetBasketRequest(), metadata);
         return MapToBasket(result);
     }
 
     public async Task DeleteBasketAsync()
     {
-        await basketClient.DeleteBasketAsync(new DeleteBasketRequest());
+        var metadata = await CreateAuthMetadataAsync();
+        await basketClient.DeleteBasketAsync(new DeleteBasketRequest(), metadata);
     }
 
     public async Task UpdateBasketAsync(IReadOnlyCollection<BasketQuantity> basket)
@@ -31,7 +36,24 @@ public class BasketService(GrpcBasketClient basketClient)
             updatePayload.Items.Add(updateItem);
         }
 
-        await basketClient.UpdateBasketAsync(updatePayload);
+        var metadata = await CreateAuthMetadataAsync();
+        await basketClient.UpdateBasketAsync(updatePayload, metadata);
+    }
+
+    private async Task<Metadata> CreateAuthMetadataAsync()
+    {
+        var metadata = new Metadata();
+
+        if (httpContextAccessor.HttpContext is { } context)
+        {
+            var accessToken = await context.GetTokenAsync("access_token");
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                metadata.Add("Authorization", $"Bearer {accessToken}");
+            }
+        }
+
+        return metadata;
     }
 
     private static List<BasketQuantity> MapToBasket(CustomerBasketResponse response)
