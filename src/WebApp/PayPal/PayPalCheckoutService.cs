@@ -85,9 +85,8 @@ public sealed class PayPalCheckoutService : IPayPalCheckoutService
         {
             // The SDK internally honours the configured HTTP timeout; we rely on that
             // for bounding call duration and do not pass an additional CancellationToken
-            // here to avoid surprises with linked tokens.
-            var response = await ordersController.CreateOrderAsync(createOrderInput)
-                .ConfigureAwait(false);
+            // here because undoing order creation is not guaranteed to succeed.
+            var response = await ordersController.CreateOrderAsync(createOrderInput, CancellationToken.None);
 
             var order = response.Data;
             if (order is null || string.IsNullOrWhiteSpace(order.Id))

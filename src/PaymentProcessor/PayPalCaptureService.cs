@@ -46,9 +46,8 @@ public sealed class PayPalCaptureService : IPayPalCaptureService
         try
         {
             // The SDK honours the configured HTTP timeout; we do not pass an
-            // explicit CancellationToken here to avoid double timeouts.
-            var response = await _client.OrdersController.CaptureOrderAsync(captureInput)
-                .ConfigureAwait(false);
+            // explicit CancellationToken here because undoing payment capture is not guaranteed to succeed.
+            var response = await _client.OrdersController.CaptureOrderAsync(captureInput, CancellationToken.None);
 
             var order = response.Data;
             var status = order?.Status;
