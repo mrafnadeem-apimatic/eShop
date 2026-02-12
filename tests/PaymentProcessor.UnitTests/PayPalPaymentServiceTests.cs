@@ -27,7 +27,7 @@ public sealed class PayPalPaymentServiceTests
 
         var sut = new PayPalPaymentService(orderingApiClient, captureService, optionsMonitor, logger);
 
-        var result = await sut.ProcessPaymentAsync(orderId);
+        var result = await sut.ProcessPaymentAsync(orderId, TestContext.CancellationToken);
 
         Assert.IsTrue(result);
     }
@@ -48,7 +48,7 @@ public sealed class PayPalPaymentServiceTests
 
         var sut = new PayPalPaymentService(orderingApiClient, captureService, optionsMonitor, logger);
 
-        var result = await sut.ProcessPaymentAsync(orderId);
+        var result = await sut.ProcessPaymentAsync(orderId, TestContext.CancellationToken);
 
         Assert.IsFalse(result);
     }
@@ -70,7 +70,7 @@ public sealed class PayPalPaymentServiceTests
 
         var sut = new PayPalPaymentService(orderingApiClient, captureService, optionsMonitor, logger);
 
-        var result = await sut.ProcessPaymentAsync(orderId);
+        var result = await sut.ProcessPaymentAsync(orderId, TestContext.CancellationToken);
 
         Assert.IsFalse(result);
     }
@@ -96,7 +96,7 @@ public sealed class PayPalPaymentServiceTests
 
         var sut = new PayPalPaymentService(orderingApiClient, captureService, optionsMonitor, logger);
 
-        var result = await sut.ProcessPaymentAsync(orderId);
+        var result = await sut.ProcessPaymentAsync(orderId, TestContext.CancellationToken);
 
         Assert.IsTrue(result, "When PayPal is disabled, the service should return PaymentSucceeded.");
         await captureService.DidNotReceiveWithAnyArgs().CaptureOrderAsync(default!, default);
@@ -130,5 +130,7 @@ public sealed class PayPalPaymentServiceTests
         optionsMonitor.CurrentValue.Returns(paymentOptions);
         logger = Substitute.For<ILogger<PayPalPaymentService>>();
     }
+
+    public TestContext TestContext { get; set; }
 }
 
