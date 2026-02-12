@@ -16,8 +16,8 @@ builder.Services.AddHttpClient<IOrderingApiClient, OrderingApiClient>(client =>
     })
     .AddClientCredentialsToken("ServiceAuth");
 
-// HTTP client used to talk to the external PayPal REST API
-builder.Services.AddHttpClient("paypal");
+// PayPal Orders API client backed by the official PayPal .NET Server SDK
+builder.Services.AddSingleton<IPayPalOrdersApi, SdkPayPalOrdersApi>();
 
 builder.Services.AddScoped<IPaymentService, PayPalPaymentService>();
 
