@@ -5,20 +5,38 @@ todos:
   - id: setup-paypal-config-sdk
     content: Add PayPal configuration and register the PayPal Server SDK client and IPayPalCheckoutService in the WebApp project.
     status: pending
+  - id: setup-paypal-config-sdk-tests
+    content: Add tests for PayPal configuration and client setup. Fix any issues after running them.
+    status: pending
   - id: implement-paypal-service
     content: Implement PayPalCheckoutService in WebApp using OrdersController.CreateOrderAsync with idempotency and mapping of paypalOrderId to the current basket/user, without performing capture.
+    status: pending
+  - id: implement-paypal-service-tests
+    content: Add tests for PayPalCheckoutService creation flow. Fix any issues after running them.
     status: pending
   - id: add-webapp-paypal-endpoints
     content: Create a WebApp API endpoint /api/paypal/order that creates PayPal orders and returns paypalOrderId plus approvalUrl, and update the order-creation flow to send PaymentMethod=PayPal and paypalOrderId to Ordering.API after approval.
     status: pending
+  - id: add-webapp-paypal-endpoints-tests
+    content: Add tests for WebApp PayPal endpoints and order-creation flow. Fix any issues after running them.
+    status: pending
   - id: extend-ordering-for-paypal
     content: Extend Ordering.API request/command models and domain to support a PayPal payment method, store PayPalOrderId, and keep PayPal orders unpaid until PaymentProcessor captures the payment.
+    status: pending
+  - id: extend-ordering-for-paypal-tests
+    content: Add tests for Ordering API/domain PayPal support. Fix any issues after running them.
     status: pending
   - id: update-checkout-ui
     content: Update WebApp checkout UI to support selecting PayPal, integrate the PayPal JS SDK, call /api/paypal/order, and then create the local order with PaymentMethod=PayPal and paypalOrderId.
     status: pending
+  - id: update-checkout-ui-tests
+    content: Add tests for PayPal-enabled checkout UI flow. Fix any issues after running them.
+    status: pending
   - id: implement-paymentprocessor-paypal-capture
     content: Extend PaymentProcessor to capture PayPal payments after stock confirmation using OrdersController.CaptureOrderAsync and publish success or failure events back to Ordering.
+    status: pending
+  - id: implement-paymentprocessor-paypal-capture-tests
+    content: Add tests for PaymentProcessor PayPal capture behavior. Fix any issues after running them.
     status: pending
 isProject: false
 ---
