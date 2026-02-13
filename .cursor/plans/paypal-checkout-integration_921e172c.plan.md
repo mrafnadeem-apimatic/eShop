@@ -4,7 +4,7 @@ overview: Add a minimal but production-ready PayPal account-only checkout flow t
 todos:
   - id: setup-paypal-config-sdk
     content: Add PayPal configuration and register the PayPal Server SDK client and IPayPalCheckoutService in the WebApp project.
-    status: pending
+    status: completed
   - id: setup-paypal-config-sdk-tests
     content: Add tests for PayPal configuration and client setup. Fix any issues after running them.
     status: pending

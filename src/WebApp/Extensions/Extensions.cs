@@ -1,12 +1,19 @@
-﻿using eShop.Basket.API.Grpc;
+using eShop.Basket.API.Grpc;
+using eShop.WebApp;
 using eShop.WebApp.Services.OrderStatus.IntegrationEvents;
+using eShop.WebApp.Services.Payments;
 using eShop.WebAppComponents.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
+using PaypalServerSdk.Standard;
+using PaypalServerSdk.Standard.Authentication;
+using PaypalEnvironment = PaypalServerSdk.Standard.Environment;
 
 public static class Extensions
 {
@@ -26,6 +33,34 @@ public static class Extensions
         builder.Services.AddSingleton<OrderStatusNotificationService>();
         builder.Services.AddSingleton<IProductImageUrlProvider, ProductImageUrlProvider>();
         builder.AddAIServices();
+
+        // PayPal configuration and SDK client
+        builder.Services.AddOptions<PayPalOptions>()
+            .BindConfiguration(nameof(PayPalOptions));
+
+        builder.Services.AddSingleton<PaypalServerSdkClient>(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<PayPalOptions>>().Value;
+
+            // Currently, the SDK exposes only the Sandbox environment. Map configuration
+            // to Sandbox for now; production/live mapping can be added when available.
+            var environment = PaypalEnvironment.Sandbox;
+
+            return new PaypalServerSdkClient.Builder()
+                .ClientCredentialsAuth(
+                    new ClientCredentialsAuthModel.Builder(options.ClientId, options.ClientSecret)
+                        .Build())
+                .HttpClientConfig(httpClientConfig =>
+                    httpClientConfig.Timeout(TimeSpan.FromSeconds(100)))
+                .Environment(environment)
+                .LoggingConfig(config => config
+                    .LogLevel(LogLevel.Information)
+                    .RequestConfig(reqConfig => reqConfig.Body(true))
+                    .ResponseConfig(respConfig => respConfig.Headers(true)))
+                .Build();
+        });
+
+        builder.Services.AddScoped<IPayPalCheckoutService, PayPalCheckoutService>();
 
         // HTTP and GRPC client registrations
         builder.Services.AddGrpcClient<Basket.BasketClient>(o => o.Address = new("http://basket-api"))
