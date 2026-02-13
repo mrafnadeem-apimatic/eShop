@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: setup-paypal-config-sdk-tests
     content: Add tests for PayPal configuration and client setup. Fix any issues after running them.
-    status: pending
+    status: completed
   - id: implement-paypal-service
     content: Implement PayPalCheckoutService in WebApp using OrdersController.CreateOrderAsync with idempotency and mapping of paypalOrderId to the current basket/user, without performing capture.
     status: pending
