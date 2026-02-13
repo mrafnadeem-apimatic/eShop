@@ -36,7 +36,10 @@ public static class Extensions
 
         // PayPal configuration and SDK client
         builder.Services.AddOptions<PayPalOptions>()
-            .BindConfiguration(nameof(PayPalOptions));
+            .BindConfiguration(nameof(PayPalOptions))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ClientId), "PayPalOptions:ClientId must be configured.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ClientSecret), "PayPalOptions:ClientSecret must be configured.")
+            .ValidateOnStart();
 
         builder.Services.AddSingleton<PaypalServerSdkClient>(sp =>
         {

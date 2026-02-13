@@ -1,4 +1,4 @@
-﻿using eShop.AppHost;
+using eShop.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -18,6 +18,11 @@ var orderDb = postgres.AddDatabase("orderingdb");
 var webhooksDb = postgres.AddDatabase("webhooksdb");
 
 var launchProfileName = ShouldUseHttpForEndpoints() ? "http" : "https";
+
+// PayPal configuration (from AppHost configuration; typically user secrets or environment)
+var payPalClientId = builder.Configuration["PayPalOptions:ClientId"];
+var payPalClientSecret = builder.Configuration["PayPalOptions:ClientSecret"];
+var payPalEnvironment = builder.Configuration["PayPalOptions:Environment"];
 
 // Services
 var identityApi = builder.AddProject<Projects.Identity_API>("identity-api", launchProfileName)
@@ -73,6 +78,21 @@ var webApp = builder.AddProject<Projects.WebApp>("webapp", launchProfileName)
     .WithReference(orderingApi)
     .WithReference(rabbitMq).WaitFor(rabbitMq)
     .WithEnvironment("IdentityUrl", identityEndpoint);
+
+if (!string.IsNullOrWhiteSpace(payPalClientId))
+{
+    webApp.WithEnvironment("PayPalOptions__ClientId", payPalClientId);
+}
+
+if (!string.IsNullOrWhiteSpace(payPalClientSecret))
+{
+    webApp.WithEnvironment("PayPalOptions__ClientSecret", payPalClientSecret);
+}
+
+if (!string.IsNullOrWhiteSpace(payPalEnvironment))
+{
+    webApp.WithEnvironment("PayPalOptions__Environment", payPalEnvironment);
+}
 
 // set to true if you want to use OpenAI
 bool useOpenAI = false;
