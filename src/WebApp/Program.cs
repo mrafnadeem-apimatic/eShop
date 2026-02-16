@@ -1,4 +1,5 @@
-﻿using eShop.WebApp.Components;
+using eShop.WebApp.Components;
+using eShop.WebApp;
 using eShop.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,5 +31,7 @@ app.UseStaticFiles();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.MapForwarder("/product-images/{id}", "https+http://catalog-api", "/api/catalog/items/{id}/pic");
+
+app.MapPayPalCheckoutApi();
 
 app.Run();

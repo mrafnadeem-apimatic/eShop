@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using eShop.WebAppComponents.Catalog;
@@ -88,6 +88,18 @@ public class BasketState(
         // Get details for the items in the basket
         var orderItems = await FetchBasketItemsAsync();
 
+        // Determine the payment method and any associated PayPal metadata. For the
+        // existing flow, this will continue to be "Card". When the checkout UI
+        // adds a PayPal option, it can set PaymentMethod to "PayPal" and provide
+        // the PayPalOrderId captured from the browser approval step.
+        var paymentMethod = string.IsNullOrWhiteSpace(checkoutInfo.PaymentMethod)
+            ? "Card"
+            : checkoutInfo.PaymentMethod;
+
+        var payPalOrderId = string.Equals(paymentMethod, "PayPal", StringComparison.OrdinalIgnoreCase)
+            ? checkoutInfo.PayPalOrderId
+            : null;
+
         // Call into Ordering.API to create the order using those details
         var request = new CreateOrderRequest(
             UserId: buyerId,
@@ -103,7 +115,9 @@ public class BasketState(
             CardSecurityNumber: "111",
             CardTypeId: checkoutInfo.CardTypeId,
             Buyer: buyerId,
-            Items: [.. orderItems]);
+            Items: [.. orderItems],
+            PaymentMethod: paymentMethod,
+            PayPalOrderId: payPalOrderId);
         await orderingService.CreateOrder(request, checkoutInfo.RequestId);
         await DeleteBasketAsync();
     }
@@ -169,4 +183,6 @@ public record CreateOrderRequest(
     string CardSecurityNumber,
     int CardTypeId,
     string Buyer,
-    List<BasketItem> Items);
+    List<BasketItem> Items,
+    string PaymentMethod,
+    string? PayPalOrderId);

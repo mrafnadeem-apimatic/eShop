@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: add-webapp-paypal-endpoints
     content: Create a WebApp API endpoint /api/paypal/order that creates PayPal orders and returns paypalOrderId plus approvalUrl, and update the order-creation flow to send PaymentMethod=PayPal and paypalOrderId to Ordering.API after approval.
-    status: pending
+    status: completed
   - id: add-webapp-paypal-endpoints-tests
     content: Add tests for WebApp PayPal endpoints and order-creation flow. Fix any issues after running them.
     status: pending
