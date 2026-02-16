@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.Extensions.Options;
 using eShop.WebApp.Services.Payments;
 
 namespace eShop.WebApp;
@@ -10,10 +11,31 @@ public static class PayPalCheckoutApi
         var api = app.MapGroup("api/paypal")
             .RequireAuthorization();
 
+        api.MapGet("/config", GetPayPalConfigAsync)
+            .WithName("GetPayPalConfig");
         api.MapPost("/order", CreatePayPalOrderAsync)
             .WithName("CreatePayPalOrder");
 
         return app;
+    }
+
+    private static IResult GetPayPalConfigAsync(
+        HttpContext httpContext,
+        IOptions<PayPalOptions> options)
+    {
+        if (httpContext.User?.Identity?.IsAuthenticated != true)
+        {
+            return Results.Unauthorized();
+        }
+
+        var opts = options.Value;
+        var environment = string.IsNullOrWhiteSpace(opts.Environment)
+            ? "sandbox"
+            : opts.Environment.Equals("Live", StringComparison.OrdinalIgnoreCase)
+                ? "live"
+                : "sandbox";
+
+        return Results.Ok(new PayPalConfigResponse(opts.ClientId, environment));
     }
 
     private static async Task<IResult> CreatePayPalOrderAsync(
@@ -59,4 +81,6 @@ public static class PayPalCheckoutApi
 }
 
 public sealed record PayPalOrderResponse(string PaypalOrderId, string ApprovalUrl);
+
+public sealed record PayPalConfigResponse(string ClientId, string Environment);
 

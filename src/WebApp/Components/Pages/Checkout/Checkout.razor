@@ -1,9 +1,13 @@
-﻿@page "/checkout"
+@page "/checkout"
+@rendermode InteractiveServer
 @using System.Globalization
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.JSInterop
 @inject BasketState Basket
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @attribute [Authorize]
+@implements IDisposable
 
 <PageTitle>Checkout | AdventureWorks</PageTitle>
 <SectionContent SectionName="page-header-title">Checkout</SectionContent>
@@ -51,10 +55,29 @@
                 </div>
             </div>
             <div class="form-section">
-                <div class="form-buttons">
-                    <a href="cart" class="button button-secondary"><img role="presentation" src="icons/arrow-left.svg" />Back to the shopping bag</a>
-                    <button class="button button-primary" type="submit">Place order</button>
+                <h2>Payment method</h2>
+                <div class="payment-method-choice">
+                    <label class="payment-option">
+                        <input type="radio" name="payment-method" value="Card" checked="@(Info.PaymentMethod == "Card")" @onchange="SelectCard" />
+                        <span>Credit card</span>
+                    </label>
+                    <label class="payment-option">
+                        <input type="radio" name="payment-method" value="PayPal" checked="@(Info.PaymentMethod == "PayPal")" @onchange="SelectPayPal" />
+                        <span>PayPal</span>
+                    </label>
                 </div>
+                @if (Info.PaymentMethod == "PayPal")
+                {
+                    <div id="paypal-button-container" class="paypal-button-container"></div>
+                    <p><a href="cart" class="button button-secondary"><img role="presentation" src="icons/arrow-left.svg" />Back to the shopping bag</a></p>
+                }
+                else
+                {
+                    <div class="form-buttons">
+                        <a href="cart" class="button button-secondary"><img role="presentation" src="icons/arrow-left.svg" />Back to the shopping bag</a>
+                        <button class="button button-primary" type="submit">Place order</button>
+                    </div>
+                }
             </div>
         </div>
         <ValidationSummary />
@@ -64,6 +87,9 @@
 @code {
     private EditContext editContext = default!;
     private ValidationMessageStore extraMessages = default!;
+    private DotNetObjectReference<Checkout>? _dotNetRef;
+    private bool _payPalButtonInited;
+    private IJSObjectReference? _checkoutModule;
 
     [SupplyParameterFromForm]
     public BasketCheckoutInfo Info { get; set; } = default!;
@@ -80,6 +106,48 @@
 
         editContext = new EditContext(Info!);
         extraMessages = new ValidationMessageStore(editContext);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _checkoutModule = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/Checkout/Checkout.razor.js");
+        }
+
+        if (Info?.PaymentMethod == "PayPal" && _checkoutModule is not null && !_payPalButtonInited)
+        {
+            _dotNetRef ??= DotNetObjectReference.Create(this);
+            await _checkoutModule.InvokeVoidAsync("initPayPalButton", _dotNetRef);
+            _payPalButtonInited = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
+        _ = _checkoutModule?.DisposeAsync();
+    }
+
+    private void SelectCard() => SelectPaymentMethod("Card");
+    private void SelectPayPal() => SelectPaymentMethod("PayPal");
+
+    private void SelectPaymentMethod(string method)
+    {
+        Info ??= new BasketCheckoutInfo();
+        Info.PaymentMethod = method;
+        if (method != "PayPal")
+        {
+            _payPalButtonInited = false;
+            Info.PayPalOrderId = null;
+            _ = InvokeAsync(async () =>
+            {
+                if (_checkoutModule is not null)
+                    await _checkoutModule.InvokeVoidAsync("destroyPayPalButton");
+                StateHasChanged();
+            });
+        }
+        StateHasChanged();
     }
 
     private void PopulateFormWithDefaultInfo()
@@ -115,6 +183,20 @@
         Nav.NavigateTo("user/orders");
     }
 
+    [JSInvokable]
+    public async Task CompletePayPalCheckoutAsync(string paypalOrderId)
+    {
+        Info.PaymentMethod = "PayPal";
+        Info.PayPalOrderId = paypalOrderId;
+        await PerformCustomValidationAsync();
+        if (!editContext.Validate())
+        {
+            return;
+        }
+        await Basket.CheckoutAsync(Info);
+        Nav.NavigateTo("user/orders");
+    }
+
     private async Task PerformCustomValidationAsync()
     {
         extraMessages.Clear();
@@ -124,7 +206,4 @@
             extraMessages.Add(new FieldIdentifier(Info, ""), "Your cart is empty");
         }
     }
-
-    private static DateTime? ParseExpiryDate(string? mmyy)
-        => DateTime.TryParseExact($"01/{mmyy}", "dd/MM/yy", null, DateTimeStyles.None, out var result) ? result.ToUniversalTime() : null;
 }

@@ -1,4 +1,4 @@
-﻿.checkout {
+.checkout {
     padding: 0 10rem;
 }
 
@@ -68,6 +68,33 @@
     flex-direction: column;
     gap: 1.25rem;
     align-self: stretch;
+}
+
+.payment-method-choice {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.payment-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.payment-option input[type="radio"] {
+    width: auto;
+    cursor: pointer;
+}
+
+.paypal-button-container {
+    min-height: 45px;
+}
+
+.paypal-error {
+    color: #c00;
+    font-size: 0.95rem;
 }
 
 @media only screen and (max-width: 480px) { 

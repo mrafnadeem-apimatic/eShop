@@ -28,7 +28,7 @@ todos:
     status: completed
   - id: update-checkout-ui
     content: Update WebApp checkout UI to support selecting PayPal, integrate the PayPal JS SDK, call /api/paypal/order, and then create the local order with PaymentMethod=PayPal and paypalOrderId.
-    status: pending
+    status: completed
   - id: update-checkout-ui-tests
     content: Add tests for PayPal-enabled checkout UI flow. Fix any issues after running them.
     status: pending
