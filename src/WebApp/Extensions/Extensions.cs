@@ -31,6 +31,7 @@ public static class Extensions
         builder.Services.AddScoped<IBasketState>(sp => sp.GetRequiredService<BasketState>());
         builder.Services.AddScoped<LogOutService>();
         builder.Services.AddSingleton<BasketService>();
+        builder.Services.AddSingleton<IBasketService>(sp => sp.GetRequiredService<BasketService>());
         builder.Services.AddSingleton<OrderStatusNotificationService>();
         builder.Services.AddSingleton<IProductImageUrlProvider, ProductImageUrlProvider>();
         builder.AddAIServices();
@@ -75,10 +76,12 @@ public static class Extensions
         builder.Services.AddHttpClient<CatalogService>(o => o.BaseAddress = new("https+http://catalog-api"))
             .AddApiVersion(2.0)
             .AddAuthToken();
+        builder.Services.AddScoped<ICatalogService>(sp => sp.GetRequiredService<CatalogService>());
 
         builder.Services.AddHttpClient<OrderingService>(o => o.BaseAddress = new("https+http://ordering-api"))
             .AddApiVersion(1.0)
             .AddAuthToken();
+        builder.Services.AddScoped<IOrderingService>(sp => sp.GetRequiredService<OrderingService>());
     }
 
     public static void AddEventBusSubscriptions(this IEventBusBuilder eventBus)

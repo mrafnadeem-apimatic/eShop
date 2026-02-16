@@ -1,6 +1,6 @@
-﻿namespace eShop.WebApp.Services;
+namespace eShop.WebApp.Services;
 
-public class OrderingService(HttpClient httpClient)
+public class OrderingService(HttpClient httpClient) : IOrderingService
 {
     private readonly string remoteServiceBaseUrl = "/api/Orders/";
 

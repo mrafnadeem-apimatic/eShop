@@ -7,9 +7,9 @@ using eShop.WebAppComponents.Services;
 namespace eShop.WebApp.Services;
 
 public class BasketState(
-    BasketService basketService,
-    CatalogService catalogService,
-    OrderingService orderingService,
+    IBasketService basketService,
+    ICatalogService catalogService,
+    IOrderingService orderingService,
     AuthenticationStateProvider authenticationStateProvider) : IBasketState
 {
     private Task<IReadOnlyCollection<BasketItem>>? _cachedBasket;

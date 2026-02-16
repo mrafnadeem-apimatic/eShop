@@ -31,7 +31,7 @@ todos:
     status: completed
   - id: update-checkout-ui-tests
     content: Add tests for PayPal-enabled checkout UI flow. Fix any issues after running them.
-    status: pending
+    status: completed
   - id: implement-paymentprocessor-paypal-capture
     content: Extend PaymentProcessor to capture PayPal payments after stock confirmation using OrdersController.CaptureOrderAsync and publish success or failure events back to Ordering.
     status: pending

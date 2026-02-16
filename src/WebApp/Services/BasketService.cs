@@ -1,10 +1,10 @@
-﻿using eShop.Basket.API.Grpc;
+using eShop.Basket.API.Grpc;
 using GrpcBasketItem = eShop.Basket.API.Grpc.BasketItem;
 using GrpcBasketClient = eShop.Basket.API.Grpc.Basket.BasketClient;
 
 namespace eShop.WebApp.Services;
 
-public class BasketService(GrpcBasketClient basketClient)
+public class BasketService(GrpcBasketClient basketClient) : IBasketService
 {
     public async Task<IReadOnlyCollection<BasketQuantity>> GetBasketAsync()
     {

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using eShop.WebApp.Services;
 using Microsoft.Extensions.Logging;
 
@@ -144,7 +145,7 @@ public class PayPalCheckoutServiceTests
             Arg.Is<PayPalCheckoutSession>(s =>
                 s.PaypalOrderId == "PAYPAL-ORDER-ID" &&
                 s.BasketId == basketId &&
-                s.UserId == userId), TestContext.CancellationToken);
+                s.UserId == userId), Arg.Any<CancellationToken>());
     }
 
     private static PayPalCheckoutService CreateService(
