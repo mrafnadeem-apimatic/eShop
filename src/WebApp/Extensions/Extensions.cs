@@ -28,6 +28,7 @@ public static class Extensions
 
         // Application services
         builder.Services.AddScoped<BasketState>();
+        builder.Services.AddScoped<IBasketState>(sp => sp.GetRequiredService<BasketState>());
         builder.Services.AddScoped<LogOutService>();
         builder.Services.AddSingleton<BasketService>();
         builder.Services.AddSingleton<OrderStatusNotificationService>();
@@ -63,6 +64,7 @@ public static class Extensions
                 .Build();
         });
 
+        builder.Services.AddSingleton<IPayPalCheckoutSessionStore, InMemoryPayPalCheckoutSessionStore>();
         builder.Services.AddScoped<IPayPalCheckoutService, PayPalCheckoutService>();
 
         // HTTP and GRPC client registrations

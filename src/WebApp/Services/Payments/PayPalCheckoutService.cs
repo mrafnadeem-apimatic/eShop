@@ -1,5 +1,7 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using PaypalServerSdk.Standard;
+using PaypalServerSdk.Standard.Exceptions;
 using PaypalServerSdk.Standard.Http.Response;
 using PaypalServerSdk.Standard.Models;
 
@@ -21,19 +23,124 @@ public class PayPalCheckoutService : IPayPalCheckoutService
 {
     private readonly PaypalServerSdkClient _client;
     private readonly ILogger<PayPalCheckoutService> _logger;
+    private readonly IBasketState _basketState;
+    private readonly IPayPalCheckoutSessionStore _sessionStore;
+
+    private const string DefaultCurrencyCode = "USD";
 
     public PayPalCheckoutService(
         PaypalServerSdkClient client,
-        ILogger<PayPalCheckoutService> logger)
+        ILogger<PayPalCheckoutService> logger,
+        IBasketState basketState,
+        IPayPalCheckoutSessionStore sessionStore)
     {
         _client = client;
         _logger = logger;
+        _basketState = basketState;
+        _sessionStore = sessionStore;
     }
 
-    public Task<ApiResponse<Order>> CreateOrderForBasketAsync(string basketId, string userId)
+    public async Task<ApiResponse<Order>> CreateOrderForBasketAsync(string basketId, string userId)
     {
-        // Implementation will be provided in a later step of the integration.
-        throw new NotImplementedException();
+        if (string.IsNullOrWhiteSpace(basketId))
+        {
+            throw new ArgumentException("Basket identifier must be provided.", nameof(basketId));
+        }
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            throw new ArgumentException("User identifier must be provided.", nameof(userId));
+        }
+
+        var basketItems = await _basketState.GetBasketItemsAsync();
+        if (basketItems.Count == 0)
+        {
+            throw new InvalidOperationException("Cannot create a PayPal order for an empty basket.");
+        }
+
+        // Map basket items to PayPal line items and compute the order total.
+        var itemRequests = new List<ItemRequest>();
+        decimal total = 0m;
+
+        foreach (var item in basketItems)
+        {
+            var lineTotal = item.UnitPrice * item.Quantity;
+            total += lineTotal;
+
+            itemRequests.Add(new ItemRequest
+            {
+                Name = item.ProductName,
+                Quantity = item.Quantity.ToString(CultureInfo.InvariantCulture),
+                UnitAmount = new Money
+                {
+                    CurrencyCode = DefaultCurrencyCode,
+                    MValue = item.UnitPrice.ToString("F2", CultureInfo.InvariantCulture),
+                },
+                // Optionally map SKU or URL here in the future.
+            });
+        }
+
+        var amount = new AmountWithBreakdown
+        {
+            CurrencyCode = DefaultCurrencyCode,
+            MValue = total.ToString("F2", CultureInfo.InvariantCulture),
+        };
+
+        var purchaseUnit = new PurchaseUnitRequest
+        {
+            ReferenceId = basketId,
+            CustomId = basketId,
+            Amount = amount,
+            Items = itemRequests,
+        };
+
+        var orderRequest = new OrderRequest
+        {
+            Intent = CheckoutPaymentIntent.Capture,
+            PurchaseUnits = new List<PurchaseUnitRequest> { purchaseUnit },
+        };
+
+        var input = new CreateOrderInput
+        {
+            Body = orderRequest,
+            PaypalRequestId = BuildIdempotencyKey(basketId, userId),
+            Prefer = "return=representation",
+        };
+
+        try
+        {
+            var response = await _client.OrdersController.CreateOrderAsync(input);
+
+            var paypalOrderId = response.Data?.Id;
+            if (!string.IsNullOrWhiteSpace(paypalOrderId))
+            {
+                var session = new PayPalCheckoutSession(
+                    PaypalOrderId: paypalOrderId,
+                    BasketId: basketId,
+                    UserId: userId,
+                    CreatedAtUtc: DateTime.UtcNow);
+
+                await _sessionStore.StoreSessionAsync(session);
+            }
+
+            return response;
+        }
+        catch (ApiException ex)
+        {
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(
+                    ex,
+                    "Error creating PayPal order for basket {BasketId} and user {UserId}.",
+                    basketId,
+                    userId);
+            }
+
+            throw;
+        }
     }
+
+    private static string BuildIdempotencyKey(string basketId, string userId)
+        => $"create-{userId}-{basketId}";
 }
 

@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: implement-paypal-service
     content: Implement PayPalCheckoutService in WebApp using OrdersController.CreateOrderAsync with idempotency and mapping of paypalOrderId to the current basket/user, without performing capture.
-    status: pending
+    status: completed
   - id: implement-paypal-service-tests
     content: Add tests for PayPalCheckoutService creation flow. Fix any issues after running them.
     status: pending
