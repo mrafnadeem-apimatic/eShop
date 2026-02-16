@@ -1,11 +1,7 @@
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
-using System.Threading.Tasks;
 using eShop.WebApp.Services;
 using Microsoft.Extensions.Logging;
-using PaypalServerSdk.Standard.Http.Response;
-using PaypalServerSdk.Standard.Models;
 
 namespace eShop.WebApp.UnitTests;
 
@@ -110,16 +106,11 @@ public class PayPalCheckoutServiceTests
             .GetBasketItemsAsync()
             .Returns(Task.FromResult<IReadOnlyCollection<BasketItem>>(basketItems));
 
+        var expectedResult = new CreatePayPalOrderResult("PAYPAL-ORDER-ID", "https://example.com/approve");
         var ordersClient = Substitute.For<IPayPalOrdersClient>();
-        ApiResponse<Order> responseFromClient = default!;
-
         ordersClient
-            .CreateOrderAsync(Arg.Any<CreateOrderInput>())
-            .Returns(Task.FromResult(responseFromClient));
-
-        ordersClient
-            .GetOrderId(Arg.Any<ApiResponse<Order>>())
-            .Returns("PAYPAL-ORDER-ID");
+            .CreateOrderAsync(Arg.Any<CreatePayPalOrderRequest>())
+            .Returns(Task.FromResult<CreatePayPalOrderResult?>(expectedResult));
 
         var sessionStore = Substitute.For<IPayPalCheckoutSessionStore>();
 
@@ -132,61 +123,28 @@ public class PayPalCheckoutServiceTests
         var userId = "user-456";
 
         // Act
-        var response = await service.CreateOrderForBasketAsync(basketId, userId);
+        var result = await service.CreateOrderForBasketAsync(basketId, userId);
 
-        // Assert: response is the one returned by the underlying client (reference equality).
-        Assert.AreSame(responseFromClient, response);
+        // Assert: result is the one returned by the client.
+        Assert.AreSame(expectedResult, result);
+        Assert.AreEqual("PAYPAL-ORDER-ID", result.PaypalOrderId);
+        Assert.AreEqual("https://example.com/approve", result.ApprovalUrl);
 
-        // Assert: the CreateOrderInput is built correctly from the basket and identifiers.
+        // Assert: the client was called with a request built from the basket.
         await ordersClient.Received(1).CreateOrderAsync(
-            Arg.Is<CreateOrderInput>(input =>
-                input.PaypalRequestId == "create-user-456-basket-123" &&
-                input.Prefer == "return=representation" &&
-                input.Body != null));
-
-        var capturedInput = ordersClient.ReceivedCalls()
-            .Single(call => call.GetMethodInfo().Name == nameof(IPayPalOrdersClient.CreateOrderAsync))
-            .GetArguments()
-            .OfType<CreateOrderInput>()
-            .Single();
-
-        var orderRequest = capturedInput.Body;
-        Assert.IsNotNull(orderRequest);
-        Assert.AreEqual(CheckoutPaymentIntent.Capture, orderRequest.Intent);
-        Assert.AreEqual(1, orderRequest.PurchaseUnits.Count);
-
-        var purchaseUnit = orderRequest.PurchaseUnits[0];
-        Assert.AreEqual(basketId, purchaseUnit.ReferenceId);
-        Assert.AreEqual(basketId, purchaseUnit.CustomId);
-
-        // Total should be (10.00 * 2) + (5.50 * 1) = 25.50
-        Assert.IsNotNull(purchaseUnit.Amount);
-        Assert.AreEqual("USD", purchaseUnit.Amount.CurrencyCode);
-        Assert.AreEqual(25.50m.ToString("F2", CultureInfo.InvariantCulture), purchaseUnit.Amount.MValue);
-
-        Assert.AreEqual(basketItems.Length, purchaseUnit.Items.Count);
-
-        for (var i = 0; i < basketItems.Length; i++)
-        {
-            var expected = basketItems[i];
-            var actual = purchaseUnit.Items[i];
-
-            Assert.AreEqual(expected.ProductName, actual.Name);
-            Assert.AreEqual(expected.Quantity.ToString(CultureInfo.InvariantCulture), actual.Quantity);
-
-            Assert.IsNotNull(actual.UnitAmount);
-            Assert.AreEqual("USD", actual.UnitAmount.CurrencyCode);
-            Assert.AreEqual(
-                expected.UnitPrice.ToString("F2", CultureInfo.InvariantCulture),
-                actual.UnitAmount.MValue);
-        }
+            Arg.Is<CreatePayPalOrderRequest>(req =>
+                req.BasketId == basketId &&
+                req.UserId == userId &&
+                req.Items.Count == 2 &&
+                req.Items[0].Name == "Item One" && req.Items[0].Quantity == 2 && req.Items[0].UnitPrice == 10.00m &&
+                req.Items[1].Name == "Item Two" && req.Items[1].Quantity == 1 && req.Items[1].UnitPrice == 5.50m));
 
         // Assert: a checkout session was stored with the expected identifiers.
         await sessionStore.Received(1).StoreSessionAsync(
             Arg.Is<PayPalCheckoutSession>(s =>
                 s.PaypalOrderId == "PAYPAL-ORDER-ID" &&
                 s.BasketId == basketId &&
-                s.UserId == userId));
+                s.UserId == userId), TestContext.CancellationToken);
     }
 
     private static PayPalCheckoutService CreateService(
@@ -200,6 +158,9 @@ public class PayPalCheckoutServiceTests
             basketState,
             sessionStore);
     }
+
+    public TestContext TestContext { get; set; }
+
 }
 
 internal sealed class TestLogger<T> : ILogger<T>

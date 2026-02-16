@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using Asp.Versioning;
@@ -154,6 +154,47 @@ public sealed class OrderingApiTests : IClassFixture<OrderingApiFixture>
         };
         var response = await _httpClient.PostAsync("api/orders", content, TestContext.Current.CancellationToken);
         var s = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AddNewOrder_WithPayPalPayment_Succeeds()
+    {
+        // Act: create order with PaymentMethod=PayPal and PayPalOrderId (order-creation flow after buyer approves in browser)
+        var item = new BasketItem
+        {
+            Id = "1",
+            ProductId = 12,
+            ProductName = "Test",
+            UnitPrice = 10,
+            OldUnitPrice = 9,
+            Quantity = 1,
+            PictureUrl = null
+        };
+        var orderRequest = new CreateOrderRequest(
+            "1",
+            "TestUser",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null!,
+            null!,
+            default,
+            null!,
+            0,
+            "test buyer",
+            new List<BasketItem> { item },
+            "PayPal",
+            "PAYPAL-SANDBOX-ORDER-ID-123");
+        var content = new StringContent(JsonSerializer.Serialize(orderRequest), UTF8Encoding.UTF8, "application/json")
+        {
+            Headers = { { "x-requestid", Guid.NewGuid().ToString() } }
+        };
+        var response = await _httpClient.PostAsync("api/orders", content, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

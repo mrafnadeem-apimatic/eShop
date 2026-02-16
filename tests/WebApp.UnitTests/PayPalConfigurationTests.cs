@@ -34,9 +34,9 @@ public class PayPalConfigurationTests
         Assert.AreEqual("test-client-secret", options.ClientSecret);
         Assert.AreEqual("Sandbox", options.Environment);
 
-        // PaypalServerSdkClient is registered as a singleton.
-        var client1 = provider.GetRequiredService<PaypalServerSdkClient>();
-        var client2 = provider.GetRequiredService<PaypalServerSdkClient>();
+        // IPayPalOrdersClient (application abstraction) is registered as a singleton.
+        var client1 = provider.GetRequiredService<IPayPalOrdersClient>();
+        var client2 = provider.GetRequiredService<IPayPalOrdersClient>();
 
         Assert.IsNotNull(client1);
         Assert.AreSame(client1, client2);
