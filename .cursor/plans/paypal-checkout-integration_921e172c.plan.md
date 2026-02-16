@@ -22,7 +22,7 @@ todos:
     status: pending
   - id: extend-ordering-for-paypal
     content: Extend Ordering.API request/command models and domain to support a PayPal payment method, store PayPalOrderId, and keep PayPal orders unpaid until PaymentProcessor captures the payment.
-    status: pending
+    status: completed
   - id: extend-ordering-for-paypal-tests
     content: Add tests for Ordering API/domain PayPal support. Fix any issues after running them.
     status: pending

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace eShop.Ordering.Domain.AggregatesModel.OrderAggregate;
 
@@ -34,6 +34,17 @@ public class Order
 
     public int? PaymentId { get; private set; }
 
+    /// <summary>
+    /// Logical payment method for this order (e.g., "Card", "PayPal").
+    /// Defaults to "Card" for backwards compatibility.
+    /// </summary>
+    public string PaymentMethod { get; private set; } = "Card";
+
+    /// <summary>
+    /// PayPal order identifier when the payment method is PayPal.
+    /// </summary>
+    public string PayPalOrderId { get; private set; }
+
     public static Order NewDraft()
     {
         var order = new Order
@@ -49,14 +60,27 @@ public class Order
         _isDraft = false;
     }
 
-    public Order(string userId, string userName, Address address, int cardTypeId, string cardNumber, string cardSecurityNumber,
-            string cardHolderName, DateTime cardExpiration, int? buyerId = null, int? paymentMethodId = null) : this()
+    public Order(
+        string userId,
+        string userName,
+        Address address,
+        int cardTypeId,
+        string cardNumber,
+        string cardSecurityNumber,
+        string cardHolderName,
+        DateTime cardExpiration,
+        int? buyerId = null,
+        int? paymentMethodId = null,
+        string paymentMethod = null,
+        string payPalOrderId = null) : this()
     {
         BuyerId = buyerId;
         PaymentId = paymentMethodId;
         OrderStatus = OrderStatus.Submitted;
         OrderDate = DateTime.UtcNow;
         Address = address;
+        PaymentMethod = string.IsNullOrWhiteSpace(paymentMethod) ? "Card" : paymentMethod;
+        PayPalOrderId = payPalOrderId;
 
         // Add the OrderStarterDomainEvent to the domain events collection 
         // to be raised/dispatched when committing changes into the Database [ After DbContext.SaveChanges() ]
@@ -167,12 +191,26 @@ public class Order
         }
     }
 
-    private void AddOrderStartedDomainEvent(string userId, string userName, int cardTypeId, string cardNumber,
-            string cardSecurityNumber, string cardHolderName, DateTime cardExpiration)
+    private void AddOrderStartedDomainEvent(
+        string userId,
+        string userName,
+        int cardTypeId,
+        string cardNumber,
+        string cardSecurityNumber,
+        string cardHolderName,
+        DateTime cardExpiration)
     {
-        var orderStartedDomainEvent = new OrderStartedDomainEvent(this, userId, userName, cardTypeId,
-                                                                    cardNumber, cardSecurityNumber,
-                                                                    cardHolderName, cardExpiration);
+        var orderStartedDomainEvent = new OrderStartedDomainEvent(
+            this,
+            userId,
+            userName,
+            cardTypeId,
+            cardNumber,
+            cardSecurityNumber,
+            cardHolderName,
+            cardExpiration,
+            PaymentMethod,
+            PayPalOrderId);
 
         this.AddDomainEvent(orderStartedDomainEvent);
     }
