@@ -64,6 +64,7 @@ public static class Extensions
                 .Build();
         });
 
+        builder.Services.AddSingleton<IPayPalOrdersClient, SdkPayPalOrdersClient>();
         builder.Services.AddSingleton<IPayPalCheckoutSessionStore, InMemoryPayPalCheckoutSessionStore>();
         builder.Services.AddScoped<IPayPalCheckoutService, PayPalCheckoutService>();
 

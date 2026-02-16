@@ -12,5 +12,9 @@
     <ProjectReference Include="..\..\src\WebApp\WebApp.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="NSubstitute" />
+  </ItemGroup>
+
 </Project>
 

@@ -7,6 +7,28 @@ using PaypalServerSdk.Standard.Models;
 
 namespace eShop.WebApp.Services.Payments;
 
+public interface IPayPalOrdersClient
+{
+    Task<ApiResponse<Order>> CreateOrderAsync(CreateOrderInput input);
+    string? GetOrderId(ApiResponse<Order> response);
+}
+
+public sealed class SdkPayPalOrdersClient : IPayPalOrdersClient
+{
+    private readonly PaypalServerSdkClient _client;
+
+    public SdkPayPalOrdersClient(PaypalServerSdkClient client)
+    {
+        _client = client;
+    }
+
+    public Task<ApiResponse<Order>> CreateOrderAsync(CreateOrderInput input)
+        => _client.OrdersController.CreateOrderAsync(input);
+
+    public string? GetOrderId(ApiResponse<Order> response)
+        => response.Data?.Id;
+}
+
 public interface IPayPalCheckoutService
 {
     /// <summary>
@@ -21,7 +43,7 @@ public interface IPayPalCheckoutService
 
 public class PayPalCheckoutService : IPayPalCheckoutService
 {
-    private readonly PaypalServerSdkClient _client;
+    private readonly IPayPalOrdersClient _ordersClient;
     private readonly ILogger<PayPalCheckoutService> _logger;
     private readonly IBasketState _basketState;
     private readonly IPayPalCheckoutSessionStore _sessionStore;
@@ -29,12 +51,12 @@ public class PayPalCheckoutService : IPayPalCheckoutService
     private const string DefaultCurrencyCode = "USD";
 
     public PayPalCheckoutService(
-        PaypalServerSdkClient client,
+        IPayPalOrdersClient ordersClient,
         ILogger<PayPalCheckoutService> logger,
         IBasketState basketState,
         IPayPalCheckoutSessionStore sessionStore)
     {
-        _client = client;
+        _ordersClient = ordersClient;
         _logger = logger;
         _basketState = basketState;
         _sessionStore = sessionStore;
@@ -109,9 +131,9 @@ public class PayPalCheckoutService : IPayPalCheckoutService
 
         try
         {
-            var response = await _client.OrdersController.CreateOrderAsync(input);
+            var response = await _ordersClient.CreateOrderAsync(input);
 
-            var paypalOrderId = response.Data?.Id;
+            var paypalOrderId = _ordersClient.GetOrderId(response);
             if (!string.IsNullOrWhiteSpace(paypalOrderId))
             {
                 var session = new PayPalCheckoutSession(
