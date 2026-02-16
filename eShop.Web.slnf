@@ -23,6 +23,7 @@
       "tests\\Catalog.FunctionalTests\\Catalog.FunctionalTests.csproj",
       "tests\\Ordering.FunctionalTests\\Ordering.FunctionalTests.csproj",
       "tests\\Ordering.UnitTests\\Ordering.UnitTests.csproj",
+      "tests\\PaymentProcessor.UnitTests\\PaymentProcessor.UnitTests.csproj",
       "tests\\WebApp.UnitTests\\WebApp.UnitTests.csproj"
     ]
   }
