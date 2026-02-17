@@ -25,7 +25,7 @@ todos:
     status: completed
   - id: extend-ordering-for-paypal-tests
     content: Add tests for Ordering API/domain PayPal support. Fix any issues after running them. Avoid reflection.
-    status: pending
+    status: completed
   - id: update-checkout-ui
     content: Update WebApp checkout UI to support selecting PayPal, integrate the PayPal JS SDK, call /api/paypal/order, and then create the local order with PaymentMethod=PayPal and paypalOrderId.
     status: pending
