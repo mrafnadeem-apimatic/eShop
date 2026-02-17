@@ -15,6 +15,7 @@ using eShop.WebAppComponents.Catalog;
 using eShop.WebAppComponents.Services;
 using Grpc.Core;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace eShop.WebApp.UnitTests;
 
@@ -69,11 +70,14 @@ public class BasketStateCheckoutTests
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationType: "TestAuth"));
         var authProvider = new TestAuthenticationStateProvider(user);
 
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+
         var basketState = new BasketState(
             basketService,
             catalogService,
             orderingService,
-            authProvider);
+            authProvider,
+            httpContextAccessor);
 
         var checkoutInfo = new BasketCheckoutInfo
         {

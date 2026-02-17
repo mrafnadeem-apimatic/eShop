@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http;
 using eShop.WebAppComponents.Catalog;
 using eShop.WebAppComponents.Services;
 
@@ -10,7 +11,8 @@ public class BasketState(
     BasketService basketService,
     CatalogService catalogService,
     OrderingService orderingService,
-    AuthenticationStateProvider authenticationStateProvider) : IBasketState
+    AuthenticationStateProvider authenticationStateProvider,
+    IHttpContextAccessor httpContextAccessor) : IBasketState
 {
     private Task<IReadOnlyCollection<BasketItem>>? _cachedBasket;
     private HashSet<BasketStateChangedSubscription> _changeSubscriptions = new();
@@ -126,7 +128,20 @@ public class BasketState(
         => Task.WhenAll(_changeSubscriptions.Select(s => s.NotifyAsync()));
 
     private async Task<ClaimsPrincipal> GetUserAsync()
-        => (await authenticationStateProvider.GetAuthenticationStateAsync()).User;
+    {
+        try
+        {
+            // In Blazor component scope, use the AuthenticationStateProvider.
+            return (await authenticationStateProvider.GetAuthenticationStateAsync()).User;
+        }
+        catch (InvalidOperationException)
+        {
+            // When resolved outside of a Blazor circuit (e.g., minimal APIs),
+            // fall back to the current HttpContext user.
+            return httpContextAccessor.HttpContext?.User
+                   ?? new ClaimsPrincipal(new ClaimsIdentity());
+        }
+    }
 
     private Task<IReadOnlyCollection<BasketItem>> FetchBasketItemsAsync()
     {
