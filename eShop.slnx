@@ -27,6 +27,7 @@
     <Project Path="tests/Ordering.UnitTests/Ordering.UnitTests.csproj" />
     <Project Path="tests/ClientApp.UnitTests/ClientApp.UnitTests.csproj" />
     <Project Path="tests/WebApp.UnitTests/WebApp.UnitTests.csproj" />
+    <Project Path="tests/PaymentProcessor.UnitTests/PaymentProcessor.UnitTests.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />

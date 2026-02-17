@@ -37,7 +37,7 @@ todos:
     status: completed
   - id: implement-paymentprocessor-paypal-capture-tests
     content: Add tests for PaymentProcessor PayPal capture behavior. Fix any issues after running them.
-    status: pending
+    status: completed
 isProject: false
 ---
 
