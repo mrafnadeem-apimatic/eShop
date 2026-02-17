@@ -64,7 +64,10 @@ builder.AddProject<Projects.OrderProcessor>("order-processor")
     .WaitFor(orderingApi); // wait for the orderingApi to be ready because that contains the EF migrations
 
 builder.AddProject<Projects.PaymentProcessor>("payment-processor")
-    .WithReference(rabbitMq).WaitFor(rabbitMq);
+    .WithReference(rabbitMq).WaitFor(rabbitMq)
+    .WithEnvironment("PayPalOptions__ClientId", payPalClientId)
+    .WithEnvironment("PayPalOptions__ClientSecret", payPalClientSecret)
+    .WithEnvironment("PayPalOptions__Environment", payPalEnvironment);
 
 var webHooksApi = builder.AddProject<Projects.Webhooks_API>("webhooks-api")
     .WithReference(rabbitMq).WaitFor(rabbitMq)
@@ -88,22 +91,12 @@ var webApp = builder.AddProject<Projects.WebApp>("webapp", launchProfileName)
     .WithReference(catalogApi)
     .WithReference(orderingApi)
     .WithReference(rabbitMq).WaitFor(rabbitMq)
-    .WithEnvironment("IdentityUrl", identityEndpoint);
+    .WithEnvironment("IdentityUrl", identityEndpoint)
+    .WithEnvironment("PayPalOptions__ClientId", payPalClientId)
+    .WithEnvironment("PayPalOptions__ClientSecret", payPalClientSecret)
+    .WithEnvironment("PayPalOptions__Environment", payPalEnvironment);
 
-if (!string.IsNullOrWhiteSpace(payPalClientId))
-{
-    webApp.WithEnvironment("PayPalOptions__ClientId", payPalClientId);
-}
 
-if (!string.IsNullOrWhiteSpace(payPalClientSecret))
-{
-    webApp.WithEnvironment("PayPalOptions__ClientSecret", payPalClientSecret);
-}
-
-if (!string.IsNullOrWhiteSpace(payPalEnvironment))
-{
-    webApp.WithEnvironment("PayPalOptions__Environment", payPalEnvironment);
-}
 
 // set to true if you want to use OpenAI
 bool useOpenAI = false;
