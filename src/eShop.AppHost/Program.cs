@@ -24,6 +24,17 @@ var payPalClientId = builder.Configuration["PayPalOptions:ClientId"];
 var payPalClientSecret = builder.Configuration["PayPalOptions:ClientSecret"];
 var payPalEnvironment = builder.Configuration["PayPalOptions:Environment"];
 
+// Fail fast if required PayPal credentials are not configured.
+if (string.IsNullOrWhiteSpace(payPalClientId))
+{
+    throw new InvalidOperationException("PayPalOptions:ClientId must be configured for the application to start.");
+}
+
+if (string.IsNullOrWhiteSpace(payPalClientSecret))
+{
+    throw new InvalidOperationException("PayPalOptions:ClientSecret must be configured for the application to start.");
+}
+
 // Services
 var identityApi = builder.AddProject<Projects.Identity_API>("identity-api", launchProfileName)
     .WithExternalHttpEndpoints()
