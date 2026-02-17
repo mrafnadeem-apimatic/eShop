@@ -59,6 +59,16 @@ public sealed class SdkPayPalOrdersClient : IPayPalOrdersClient
         {
             CurrencyCode = request.CurrencyCode,
             MValue = request.Total.ToString("F2", CultureInfo.InvariantCulture),
+            Breakdown = new AmountBreakdown
+            {
+                // When line items are provided, PayPal requires amount.breakdown.item_total
+                // to be present and equal to the sum of (unit_amount * quantity) for all items.
+                ItemTotal = new Money
+                {
+                    CurrencyCode = request.CurrencyCode,
+                    MValue = request.Total.ToString("F2", CultureInfo.InvariantCulture),
+                },
+            },
         };
 
         var purchaseUnit = new PurchaseUnitRequest
@@ -90,16 +100,18 @@ public sealed class SdkPayPalOrdersClient : IPayPalOrdersClient
             throw new InvalidOperationException("PayPal did not return a valid order.");
         }
 
+        // Newer or alternative flows may not return an "approve" link, especially
+        // when the JS SDK is driving the approval experience directly. In our
+        // integration we only require the PayPal order ID for the JS SDK, so if
+        // no approval link is present we still treat the order as valid.
         var approvalLink = order.Links?
             .FirstOrDefault(link =>
-                string.Equals(link.Rel, "approve", StringComparison.OrdinalIgnoreCase));
+                string.Equals(link.Rel, "approve", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(link.Rel, "payer-action", StringComparison.OrdinalIgnoreCase));
 
-        if (approvalLink is null || string.IsNullOrWhiteSpace(approvalLink.Href))
-        {
-            throw new InvalidOperationException("PayPal did not provide an approval link for this order.");
-        }
+        var approvalUrl = approvalLink?.Href ?? string.Empty;
 
-        return new PayPalOrderResponse(order.Id, approvalLink.Href);
+        return new PayPalOrderResponse(order.Id, approvalUrl);
     }
 }
 
