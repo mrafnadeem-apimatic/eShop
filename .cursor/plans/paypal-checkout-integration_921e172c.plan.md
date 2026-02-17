@@ -18,13 +18,13 @@ todos:
     content: Create a WebApp API endpoint /api/paypal/order that creates PayPal orders and returns paypalOrderId plus approvalUrl, and update the order-creation flow to send PaymentMethod=PayPal and paypalOrderId to Ordering.API after approval.
     status: completed
   - id: add-webapp-paypal-endpoints-tests
-    content: Add tests for WebApp PayPal endpoints and order-creation flow. Fix any issues after running them.
+    content: Add tests for WebApp PayPal endpoints and order-creation flow. Fix any issues after running them. Avoid reflection.
     status: pending
   - id: extend-ordering-for-paypal
     content: Extend Ordering.API request/command models and domain to support a PayPal payment method, store PayPalOrderId, and keep PayPal orders unpaid until PaymentProcessor captures the payment.
     status: completed
   - id: extend-ordering-for-paypal-tests
-    content: Add tests for Ordering API/domain PayPal support. Fix any issues after running them.
+    content: Add tests for Ordering API/domain PayPal support. Fix any issues after running them. Avoid reflection.
     status: pending
   - id: update-checkout-ui
     content: Update WebApp checkout UI to support selecting PayPal, integrate the PayPal JS SDK, call /api/paypal/order, and then create the local order with PaymentMethod=PayPal and paypalOrderId.

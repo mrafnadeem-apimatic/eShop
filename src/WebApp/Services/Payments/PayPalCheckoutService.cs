@@ -1,16 +1,30 @@
 using System.Globalization;
+using System.Threading;
 using Microsoft.Extensions.Logging;
 using PaypalServerSdk.Standard;
-using PaypalServerSdk.Standard.Exceptions;
 using PaypalServerSdk.Standard.Http.Response;
 using PaypalServerSdk.Standard.Models;
+using eShop.WebApp;
 
 namespace eShop.WebApp.Services.Payments;
 
+public sealed record PayPalOrderItem(
+    string Name,
+    int Quantity,
+    decimal UnitPrice,
+    string CurrencyCode);
+
+public sealed record PayPalOrderRequest(
+    string BasketId,
+    string UserId,
+    IReadOnlyCollection<PayPalOrderItem> Items,
+    decimal Total,
+    string CurrencyCode,
+    string IdempotencyKey);
+
 public interface IPayPalOrdersClient
 {
-    Task<ApiResponse<Order>> CreateOrderAsync(CreateOrderInput input);
-    string? GetOrderId(ApiResponse<Order> response);
+    Task<PayPalOrderResponse> CreateOrderAsync(PayPalOrderRequest request, CancellationToken cancellationToken = default);
 }
 
 public sealed class SdkPayPalOrdersClient : IPayPalOrdersClient
@@ -22,23 +36,84 @@ public sealed class SdkPayPalOrdersClient : IPayPalOrdersClient
         _client = client;
     }
 
-    public Task<ApiResponse<Order>> CreateOrderAsync(CreateOrderInput input)
-        => _client.OrdersController.CreateOrderAsync(input);
+    public async Task<PayPalOrderResponse> CreateOrderAsync(PayPalOrderRequest request, CancellationToken cancellationToken = default)
+    {
+        // Map the domain request to the PayPal SDK request model.
+        var itemRequests = new List<ItemRequest>();
 
-    public string? GetOrderId(ApiResponse<Order> response)
-        => response.Data?.Id;
+        foreach (var item in request.Items)
+        {
+            itemRequests.Add(new ItemRequest
+            {
+                Name = item.Name,
+                Quantity = item.Quantity.ToString(CultureInfo.InvariantCulture),
+                UnitAmount = new Money
+                {
+                    CurrencyCode = item.CurrencyCode,
+                    MValue = item.UnitPrice.ToString("F2", CultureInfo.InvariantCulture),
+                },
+            });
+        }
+
+        var amount = new AmountWithBreakdown
+        {
+            CurrencyCode = request.CurrencyCode,
+            MValue = request.Total.ToString("F2", CultureInfo.InvariantCulture),
+        };
+
+        var purchaseUnit = new PurchaseUnitRequest
+        {
+            ReferenceId = request.BasketId,
+            CustomId = request.BasketId,
+            Amount = amount,
+            Items = itemRequests,
+        };
+
+        var orderRequest = new OrderRequest
+        {
+            Intent = CheckoutPaymentIntent.Capture,
+            PurchaseUnits = new List<PurchaseUnitRequest> { purchaseUnit },
+        };
+
+        var input = new CreateOrderInput
+        {
+            Body = orderRequest,
+            PaypalRequestId = request.IdempotencyKey,
+            Prefer = "return=representation",
+        };
+
+        var response = await _client.OrdersController.CreateOrderAsync(input, cancellationToken: cancellationToken);
+
+        var order = response.Data;
+        if (order is null || string.IsNullOrWhiteSpace(order.Id))
+        {
+            throw new InvalidOperationException("PayPal did not return a valid order.");
+        }
+
+        var approvalLink = order.Links?
+            .FirstOrDefault(link =>
+                string.Equals(link.Rel, "approve", StringComparison.OrdinalIgnoreCase));
+
+        if (approvalLink is null || string.IsNullOrWhiteSpace(approvalLink.Href))
+        {
+            throw new InvalidOperationException("PayPal did not provide an approval link for this order.");
+        }
+
+        return new PayPalOrderResponse(order.Id, approvalLink.Href);
+    }
 }
 
 public interface IPayPalCheckoutService
 {
     /// <summary>
     /// Creates a PayPal order for the current basket and user.
-    /// The concrete implementation will map basket contents to PayPal purchase units.
+    /// The concrete implementation will map basket contents to a PayPal-ready request.
     /// </summary>
     /// <param name="basketId">The identifier of the basket.</param>
     /// <param name="userId">The identifier of the current user/buyer.</param>
-    /// <returns>The PayPal order wrapped in an API response.</returns>
-    Task<ApiResponse<Order>> CreateOrderForBasketAsync(string basketId, string userId);
+    /// <param name="cancellationToken">A token to observe while waiting for the operation to complete.</param>
+    /// <returns>The PayPal order identifier and approval URL.</returns>
+    Task<PayPalOrderResponse> CreateOrderForBasketAsync(string basketId, string userId, CancellationToken cancellationToken = default);
 }
 
 public class PayPalCheckoutService : IPayPalCheckoutService
@@ -62,7 +137,7 @@ public class PayPalCheckoutService : IPayPalCheckoutService
         _sessionStore = sessionStore;
     }
 
-    public async Task<ApiResponse<Order>> CreateOrderForBasketAsync(string basketId, string userId)
+    public async Task<PayPalOrderResponse> CreateOrderForBasketAsync(string basketId, string userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(basketId))
         {
@@ -81,7 +156,7 @@ public class PayPalCheckoutService : IPayPalCheckoutService
         }
 
         // Map basket items to PayPal line items and compute the order total.
-        var itemRequests = new List<ItemRequest>();
+        var items = new List<PayPalOrderItem>();
         decimal total = 0m;
 
         foreach (var item in basketItems)
@@ -89,65 +164,39 @@ public class PayPalCheckoutService : IPayPalCheckoutService
             var lineTotal = item.UnitPrice * item.Quantity;
             total += lineTotal;
 
-            itemRequests.Add(new ItemRequest
-            {
-                Name = item.ProductName,
-                Quantity = item.Quantity.ToString(CultureInfo.InvariantCulture),
-                UnitAmount = new Money
-                {
-                    CurrencyCode = DefaultCurrencyCode,
-                    MValue = item.UnitPrice.ToString("F2", CultureInfo.InvariantCulture),
-                },
-                // Optionally map SKU or URL here in the future.
-            });
+            items.Add(new PayPalOrderItem(
+                Name: item.ProductName,
+                Quantity: item.Quantity,
+                UnitPrice: item.UnitPrice,
+                CurrencyCode: DefaultCurrencyCode));
         }
-
-        var amount = new AmountWithBreakdown
-        {
-            CurrencyCode = DefaultCurrencyCode,
-            MValue = total.ToString("F2", CultureInfo.InvariantCulture),
-        };
-
-        var purchaseUnit = new PurchaseUnitRequest
-        {
-            ReferenceId = basketId,
-            CustomId = basketId,
-            Amount = amount,
-            Items = itemRequests,
-        };
-
-        var orderRequest = new OrderRequest
-        {
-            Intent = CheckoutPaymentIntent.Capture,
-            PurchaseUnits = new List<PurchaseUnitRequest> { purchaseUnit },
-        };
-
-        var input = new CreateOrderInput
-        {
-            Body = orderRequest,
-            PaypalRequestId = BuildIdempotencyKey(basketId, userId),
-            Prefer = "return=representation",
-        };
 
         try
         {
-            var response = await _ordersClient.CreateOrderAsync(input);
+            var request = new PayPalOrderRequest(
+                BasketId: basketId,
+                UserId: userId,
+                Items: items,
+                Total: total,
+                CurrencyCode: DefaultCurrencyCode,
+                IdempotencyKey: BuildIdempotencyKey(basketId, userId));
 
-            var paypalOrderId = _ordersClient.GetOrderId(response);
-            if (!string.IsNullOrWhiteSpace(paypalOrderId))
+            var response = await _ordersClient.CreateOrderAsync(request, cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(response.PaypalOrderId))
             {
                 var session = new PayPalCheckoutSession(
-                    PaypalOrderId: paypalOrderId,
+                    PaypalOrderId: response.PaypalOrderId,
                     BasketId: basketId,
                     UserId: userId,
                     CreatedAtUtc: DateTime.UtcNow);
 
-                await _sessionStore.StoreSessionAsync(session);
+                await _sessionStore.StoreSessionAsync(session, cancellationToken);
             }
 
             return response;
         }
-        catch (ApiException ex)
+        catch (Exception ex)
         {
             if (_logger.IsEnabled(LogLevel.Error))
             {

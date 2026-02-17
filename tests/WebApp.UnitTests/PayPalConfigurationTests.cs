@@ -34,12 +34,12 @@ public class PayPalConfigurationTests
         Assert.AreEqual("test-client-secret", options.ClientSecret);
         Assert.AreEqual("Sandbox", options.Environment);
 
-        // PaypalServerSdkClient is registered as a singleton.
-        var client1 = provider.GetRequiredService<PaypalServerSdkClient>();
-        var client2 = provider.GetRequiredService<PaypalServerSdkClient>();
+        // IPayPalOrdersClient is registered as a singleton.
+        var ordersClient1 = provider.GetRequiredService<IPayPalOrdersClient>();
+        var ordersClient2 = provider.GetRequiredService<IPayPalOrdersClient>();
 
-        Assert.IsNotNull(client1);
-        Assert.AreSame(client1, client2);
+        Assert.IsNotNull(ordersClient1);
+        Assert.AreSame(ordersClient1, ordersClient2);
 
         // IPayPalCheckoutService is registered as a scoped service.
         using var scope1 = provider.CreateScope();

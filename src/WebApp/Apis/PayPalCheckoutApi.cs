@@ -41,38 +41,12 @@ public static class PayPalCheckoutApi
 
         try
         {
-            var response = await payPalCheckoutService.CreateOrderForBasketAsync(basketId, userId);
-            var order = response.Data;
+            var response = await payPalCheckoutService.CreateOrderForBasketAsync(
+                basketId,
+                userId,
+                httpContext.RequestAborted);
 
-            if (order is null || string.IsNullOrWhiteSpace(order.Id))
-            {
-                logger.LogError("PayPal did not return a valid order for user {UserId}.", userId);
-                return Results.Problem(
-                    detail: "PayPal did not return a valid order.",
-                    statusCode: StatusCodes.Status502BadGateway);
-            }
-
-            var approvalLink = order.Links?
-                .FirstOrDefault(link =>
-                    string.Equals(link.Rel, "approve", StringComparison.OrdinalIgnoreCase));
-
-            if (approvalLink is null || string.IsNullOrWhiteSpace(approvalLink.Href))
-            {
-                logger.LogError(
-                    "PayPal order {OrderId} for user {UserId} did not contain an approval link.",
-                    order.Id,
-                    userId);
-
-                return Results.Problem(
-                    detail: "PayPal did not provide an approval link for this order.",
-                    statusCode: StatusCodes.Status502BadGateway);
-            }
-
-            var payload = new PayPalOrderResponse(
-                PaypalOrderId: order.Id,
-                ApprovalUrl: approvalLink.Href);
-
-            return Results.Ok(payload);
+            return Results.Ok(response);
         }
         catch (Exception ex)
         {
