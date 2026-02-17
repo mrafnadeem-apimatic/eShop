@@ -54,6 +54,10 @@ public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler
             _buyerRepository.Add(buyer);
         }
 
+        // Ensure the order is associated with this buyer even for non-card
+        // payment methods so that queries by buyer identity continue to work.
+        domainEvent.Order.SetBuyerId(buyer.Id);
+
         await _buyerRepository.UnitOfWork
             .SaveEntitiesAsync(cancellationToken);
 

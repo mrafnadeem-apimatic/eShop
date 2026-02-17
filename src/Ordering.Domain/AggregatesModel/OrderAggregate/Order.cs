@@ -120,6 +120,22 @@ public class Order
         PaymentId = paymentId;
     }
     
+    /// <summary>
+    /// Associates this order with an existing buyer without requiring a payment
+    /// method to be verified. This is primarily used for non-card payment flows
+    /// (e.g., PayPal) where we still want the order to be queryable by buyer.
+    /// </summary>
+    /// <param name="buyerId">The identifier of the buyer aggregate.</param>
+    public void SetBuyerId(int buyerId)
+    {
+        if (buyerId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(buyerId));
+        }
+
+        BuyerId = buyerId;
+    }
+    
     public void SetAwaitingValidationStatus()
     {
         if (OrderStatus == OrderStatus.Submitted)
