@@ -10,6 +10,7 @@
 @inject IOptions<PayPalOptions> PayPalOptionsAccessor
 @attribute [Authorize]
 @implements IAsyncDisposable
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>Checkout | AdventureWorks</PageTitle>
 <SectionContent SectionName="page-header-title">Checkout</SectionContent>
