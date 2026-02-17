@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using eShop.WebApp.Services.Payments;
+using Microsoft.AspNetCore.Mvc;
 
 namespace eShop.WebApp;
 
@@ -19,7 +20,7 @@ public static class PayPalCheckoutApi
     internal static async Task<IResult> CreatePayPalOrderAsync(
         HttpContext httpContext,
         IPayPalCheckoutService payPalCheckoutService,
-        ILogger logger)
+        [FromServices] ILogger<PayPalCheckoutService> logger)
     {
         var user = httpContext.User;
         if (user?.Identity?.IsAuthenticated != true)
