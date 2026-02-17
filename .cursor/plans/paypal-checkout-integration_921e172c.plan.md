@@ -19,7 +19,7 @@ todos:
     status: completed
   - id: add-webapp-paypal-endpoints-tests
     content: Add tests for WebApp PayPal endpoints and order-creation flow. Fix any issues after running them. Avoid reflection.
-    status: pending
+    status: completed
   - id: extend-ordering-for-paypal
     content: Extend Ordering.API request/command models and domain to support a PayPal payment method, store PayPalOrderId, and keep PayPal orders unpaid until PaymentProcessor captures the payment.
     status: completed

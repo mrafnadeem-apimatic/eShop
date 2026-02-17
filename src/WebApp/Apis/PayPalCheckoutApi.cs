@@ -16,7 +16,7 @@ public static class PayPalCheckoutApi
         return app;
     }
 
-    private static async Task<IResult> CreatePayPalOrderAsync(
+    internal static async Task<IResult> CreatePayPalOrderAsync(
         HttpContext httpContext,
         IPayPalCheckoutService payPalCheckoutService,
         ILogger logger)
