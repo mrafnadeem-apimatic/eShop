@@ -176,6 +176,8 @@
 
     private void PopulateFormWithDefaultInfo()
     {
+        var user = HttpContext?.User;
+
         Info = new BasketCheckoutInfo
         {
             Street = ReadClaim("address_street"),
@@ -187,7 +189,7 @@
         };
 
         string? ReadClaim(string type)
-            => HttpContext.User.Claims.FirstOrDefault(x => x.Type == type)?.Value;
+            => user?.Claims.FirstOrDefault(x => x.Type == type)?.Value;
     }
 
     private async Task HandleSubmitAsync()

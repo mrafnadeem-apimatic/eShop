@@ -30,8 +30,8 @@ todos:
     content: Update WebApp checkout UI to support selecting PayPal, integrate the PayPal JS SDK, call /api/paypal/order, and then create the local order with PaymentMethod=PayPal and paypalOrderId.
     status: completed
   - id: update-checkout-ui-tests
-    content: Add tests for PayPal-enabled checkout UI flow. Fix any issues after running them.
-    status: pending
+    content: Add playwright tests for PayPal-enabled checkout UI flow. Fix any issues after running them.
+    status: completed
   - id: implement-paymentprocessor-paypal-capture
     content: Extend PaymentProcessor to capture PayPal payments after stock confirmation using OrdersController.CaptureOrderAsync and publish success or failure events back to Ordering.
     status: completed

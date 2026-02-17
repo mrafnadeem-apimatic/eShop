@@ -37,7 +37,7 @@ export default defineConfig({
     },
     {
       name: 'e2e tests logged in',
-      testMatch: ['**/AddItemTest.spec.ts', '**/RemoveItemTest.spec.ts'],
+      testMatch: ['**/AddItemTest.spec.ts', '**/RemoveItemTest.spec.ts', '**/PayPalCheckoutTest.spec.ts'],
       dependencies: ['setup'],
       use: {
         storageState: STORAGE_STATE,
