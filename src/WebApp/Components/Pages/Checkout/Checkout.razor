@@ -240,6 +240,21 @@
         => DateTime.TryParseExact($"01/{mmyy}", "dd/MM/yy", null, DateTimeStyles.None, out var result) ? result.ToUniversalTime() : null;
 
     [JSInvokable]
+    public Task<bool> ValidateCheckoutBeforePayPalAsync()
+    {
+        bool isValid = false;
+
+        return InvokeAsync(async () =>
+        {
+            await PerformCustomValidationAsync();
+
+            isValid = editContext.Validate();
+
+            StateHasChanged();
+        }).ContinueWith(_ => isValid);
+    }
+
+    [JSInvokable]
     public Task CompletePayPalCheckoutAsync(string paypalOrderId)
     {
         if (string.IsNullOrWhiteSpace(paypalOrderId))

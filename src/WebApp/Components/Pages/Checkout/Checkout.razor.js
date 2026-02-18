@@ -55,6 +55,20 @@ export async function initializePayPalButton(dotNetRef, createOrderUrl, clientId
             shape: 'rect',
             label: 'paypal'
         },
+        onClick: function (data, actions) {
+            return dotNetRef.invokeMethodAsync('ValidateCheckoutBeforePayPalAsync')
+                .then(isValid => {
+                    if (isValid) {
+                        return actions.resolve();
+                    }
+
+                    return actions.reject();
+                })
+                .catch(err => {
+                    console.error('Error validating checkout info before PayPal button click', err);
+                    return actions.reject();
+                });
+        },
         createOrder: function () {
             return fetch(createOrderUrl, {
                 method: 'POST',
