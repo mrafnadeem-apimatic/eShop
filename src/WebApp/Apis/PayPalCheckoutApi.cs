@@ -20,7 +20,7 @@ public static class PayPalCheckoutApi
     internal static async Task<IResult> CreatePayPalOrderAsync(
         HttpContext httpContext,
         IPayPalCheckoutService payPalCheckoutService,
-        [FromServices] ILogger<PayPalCheckoutService> logger)
+        [FromServices] ILogger<PayPalCheckoutApiLogCategory> logger)
     {
         var user = httpContext.User;
         if (user?.Identity?.IsAuthenticated != true)
@@ -61,4 +61,8 @@ public static class PayPalCheckoutApi
 }
 
 public sealed record PayPalOrderResponse(string PaypalOrderId, string ApprovalUrl);
+
+public sealed class PayPalCheckoutApiLogCategory
+{
+}
 
