@@ -1,9 +1,14 @@
+using System.Collections.Generic;
+using System.Globalization;
 using System.Net;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Linq;
 using eShop.WebApp;
+using eShop.WebApp.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -58,10 +63,11 @@ public class PayPalCheckoutApiTests
         httpContext.User = new ClaimsPrincipal(new ClaimsIdentity()); // Not authenticated
 
         var service = Substitute.For<IPayPalCheckoutService>();
+        var basketState = Substitute.For<IBasketState>();
         var logger = Substitute.For<ILogger<PayPalCheckoutApiLogCategory>>();
 
         // Act
-        var result = await PayPalCheckoutApi.CreatePayPalOrderAsync(httpContext, service, logger);
+        var result = await PayPalCheckoutApi.CreatePayPalOrderAsync(httpContext, service, basketState, logger);
 
         // Assert
         Assert.IsInstanceOfType(result, typeof(IStatusCodeHttpResult));
@@ -84,10 +90,11 @@ public class PayPalCheckoutApiTests
         };
 
         var service = Substitute.For<IPayPalCheckoutService>();
+        var basketState = Substitute.For<IBasketState>();
         var logger = Substitute.For<ILogger<PayPalCheckoutApiLogCategory>>();
 
         // Act
-        var result = await PayPalCheckoutApi.CreatePayPalOrderAsync(httpContext, service, logger);
+        var result = await PayPalCheckoutApi.CreatePayPalOrderAsync(httpContext, service, basketState, logger);
 
         // Assert
         Assert.IsInstanceOfType(result, typeof(IStatusCodeHttpResult));
@@ -110,6 +117,29 @@ public class PayPalCheckoutApiTests
     {
         // Arrange
         const string userId = "user-123";
+        var basketItems = new[]
+        {
+            new BasketItem
+            {
+                Id = "item-1",
+                ProductId = 1,
+                ProductName = "Item One",
+                UnitPrice = 10.00m,
+                OldUnitPrice = 0m,
+                Quantity = 2,
+            },
+            new BasketItem
+            {
+                Id = "item-2",
+                ProductId = 2,
+                ProductName = "Item Two",
+                UnitPrice = 5.50m,
+                OldUnitPrice = 0m,
+                Quantity = 1,
+            },
+        };
+
+        var expectedBasketId = ComputeExpectedBasketId(basketItems);
         var identity = new ClaimsIdentity(authenticationType: "Test");
         identity.AddClaim(new Claim("sub", userId));
 
@@ -118,23 +148,28 @@ public class PayPalCheckoutApiTests
             User = new ClaimsPrincipal(identity)
         };
 
+        var basketState = Substitute.For<IBasketState>();
+        basketState
+            .GetBasketItemsAsync()
+            .Returns(Task.FromResult<IReadOnlyCollection<BasketItem>>(basketItems));
+
         var expectedResponse = new PayPalOrderResponse(
             PaypalOrderId: "PAYPAL-ORDER-ID",
             ApprovalUrl: "https://example.test/approval");
 
         var service = Substitute.For<IPayPalCheckoutService>();
         service
-            .CreateOrderForBasketAsync(userId, userId, httpContext.RequestAborted)
+            .CreateOrderForBasketAsync(expectedBasketId, userId, httpContext.RequestAborted)
             .Returns(expectedResponse);
 
         var logger = Substitute.For<ILogger<PayPalCheckoutApiLogCategory>>();
 
         // Act
-        var result = await PayPalCheckoutApi.CreatePayPalOrderAsync(httpContext, service, logger);
+        var result = await PayPalCheckoutApi.CreatePayPalOrderAsync(httpContext, service, basketState, logger);
 
-        // Assert: service was called with basketId and userId both equal to sub claim
+        // Assert: service was called with the derived basketId and userId
         await service.Received(1)
-            .CreateOrderForBasketAsync(userId, userId, httpContext.RequestAborted);
+            .CreateOrderForBasketAsync(expectedBasketId, userId, httpContext.RequestAborted);
 
         Assert.IsInstanceOfType(result, typeof(Ok<PayPalOrderResponse>));
         var okResult = (Ok<PayPalOrderResponse>)result;
@@ -147,6 +182,20 @@ public class PayPalCheckoutApiTests
     {
         // Arrange
         const string userId = "user-123";
+        var basketItems = new[]
+        {
+            new BasketItem
+            {
+                Id = "item-1",
+                ProductId = 1,
+                ProductName = "Item One",
+                UnitPrice = 10.00m,
+                OldUnitPrice = 0m,
+                Quantity = 2,
+            },
+        };
+
+        var expectedBasketId = ComputeExpectedBasketId(basketItems);
         var identity = new ClaimsIdentity(authenticationType: "Test");
         identity.AddClaim(new Claim("sub", userId));
 
@@ -155,15 +204,20 @@ public class PayPalCheckoutApiTests
             User = new ClaimsPrincipal(identity)
         };
 
+        var basketState = Substitute.For<IBasketState>();
+        basketState
+            .GetBasketItemsAsync()
+            .Returns(Task.FromResult<IReadOnlyCollection<BasketItem>>(basketItems));
+
         var service = Substitute.For<IPayPalCheckoutService>();
         service
-            .CreateOrderForBasketAsync(userId, userId, httpContext.RequestAborted)
+            .CreateOrderForBasketAsync(expectedBasketId, userId, httpContext.RequestAborted)
             .Returns(Task.FromException<PayPalOrderResponse>(new InvalidOperationException("Boom")));
 
         var logger = Substitute.For<ILogger<PayPalCheckoutApiLogCategory>>();
 
         // Act
-        var result = await PayPalCheckoutApi.CreatePayPalOrderAsync(httpContext, service, logger);
+        var result = await PayPalCheckoutApi.CreatePayPalOrderAsync(httpContext, service, basketState, logger);
 
         // Assert
         Assert.IsInstanceOfType(result, typeof(IStatusCodeHttpResult));
@@ -176,6 +230,30 @@ public class PayPalCheckoutApiTests
 
         var problem = (ProblemDetails)valueResult.Value!;
         Assert.AreEqual("An error occurred while creating the PayPal order.", problem.Detail);
+    }
+
+    private static string ComputeExpectedBasketId(IReadOnlyCollection<BasketItem> basketItems)
+    {
+        var orderedItems = basketItems
+            .OrderBy(item => item.ProductId)
+            .ThenBy(item => item.Id, StringComparer.Ordinal);
+
+        var builder = new StringBuilder();
+
+        foreach (var item in orderedItems)
+        {
+            builder
+                .Append(item.ProductId)
+                .Append(':')
+                .Append(item.UnitPrice.ToString("F2", CultureInfo.InvariantCulture))
+                .Append(':')
+                .Append(item.Quantity)
+                .Append(';');
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(builder.ToString());
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToHexString(hash);
     }
 }
 

@@ -1,4 +1,9 @@
+using System.Globalization;
+using System.Linq;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using eShop.WebApp.Services;
 using eShop.WebApp.Services.Payments;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,6 +25,7 @@ public static class PayPalCheckoutApi
     internal static async Task<IResult> CreatePayPalOrderAsync(
         HttpContext httpContext,
         IPayPalCheckoutService payPalCheckoutService,
+        IBasketState basketState,
         [FromServices] ILogger<PayPalCheckoutApiLogCategory> logger)
     {
         var user = httpContext.User;
@@ -37,8 +43,8 @@ public static class PayPalCheckoutApi
                 statusCode: StatusCodes.Status400BadRequest);
         }
 
-        // For now, reuse the buyer identifier as the basket identifier for PayPal.
-        var basketId = userId;
+        var basketItems = await basketState.GetBasketItemsAsync();
+        var basketId = ComputeBasketId(basketItems);
 
         try
         {
@@ -58,6 +64,30 @@ public static class PayPalCheckoutApi
 
     private static string? GetUserId(ClaimsPrincipal user)
         => user.FindFirst("sub")?.Value;
+
+    private static string ComputeBasketId(IReadOnlyCollection<BasketItem> basketItems)
+    {
+        var orderedItems = basketItems
+            .OrderBy(item => item.ProductId)
+            .ThenBy(item => item.Id, StringComparer.Ordinal);
+
+        var builder = new StringBuilder();
+
+        foreach (var item in orderedItems)
+        {
+            builder
+                .Append(item.ProductId)
+                .Append(':')
+                .Append(item.UnitPrice.ToString("F2", CultureInfo.InvariantCulture))
+                .Append(':')
+                .Append(item.Quantity)
+                .Append(';');
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(builder.ToString());
+        var hashBytes = SHA256.HashData(bytes);
+        return Convert.ToHexString(hashBytes);
+    }
 }
 
 public sealed record PayPalOrderResponse(string PaypalOrderId, string ApprovalUrl);
