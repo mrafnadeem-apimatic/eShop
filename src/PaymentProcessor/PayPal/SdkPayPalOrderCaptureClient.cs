@@ -32,6 +32,11 @@ public sealed class SdkPayPalOrderCaptureClient : IPayPalOrderCaptureClient
             throw new ArgumentException("PayPal order ID must be provided.", nameof(paypalOrderId));
         }
 
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            throw new ArgumentException("Idempotency key must be provided.", nameof(idempotencyKey));
+        }
+
         cancellationToken.ThrowIfCancellationRequested();
 
         var input = new CaptureOrderInput
