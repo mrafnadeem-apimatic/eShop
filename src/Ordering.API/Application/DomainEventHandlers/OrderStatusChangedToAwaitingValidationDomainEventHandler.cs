@@ -1,4 +1,4 @@
-﻿namespace eShop.Ordering.API.Application.DomainEventHandlers;
+namespace eShop.Ordering.API.Application.DomainEventHandlers;
 
 public class OrderStatusChangedToAwaitingValidationDomainEventHandler
                 : INotificationHandler<OrderStatusChangedToAwaitingValidationDomainEvent>
@@ -25,12 +25,24 @@ public class OrderStatusChangedToAwaitingValidationDomainEventHandler
         OrderingApiTrace.LogOrderStatusUpdated(_logger, domainEvent.OrderId, OrderStatus.AwaitingValidation);
 
         var order = await _orderRepository.GetAsync(domainEvent.OrderId);
-        var buyer = await _buyerRepository.FindByIdAsync(order.BuyerId.Value);
+        Buyer buyer = null;
+        if (order.BuyerId is int buyerId)
+        {
+            buyer = await _buyerRepository.FindByIdAsync(buyerId);
+        }
 
         var orderStockList = domainEvent.OrderItems
             .Select(orderItem => new OrderStockItem(orderItem.ProductId, orderItem.Units));
 
-        var integrationEvent = new OrderStatusChangedToAwaitingValidationIntegrationEvent(order.Id, order.OrderStatus, buyer.Name, buyer.IdentityGuid, orderStockList);
+        var buyerName = buyer?.Name ?? string.Empty;
+        var buyerIdentityGuid = buyer?.IdentityGuid ?? string.Empty;
+
+        var integrationEvent = new OrderStatusChangedToAwaitingValidationIntegrationEvent(
+            order.Id,
+            order.OrderStatus,
+            buyerName,
+            buyerIdentityGuid,
+            orderStockList);
         await _orderingIntegrationEventService.AddAndSaveEventAsync(integrationEvent);
     }
 }

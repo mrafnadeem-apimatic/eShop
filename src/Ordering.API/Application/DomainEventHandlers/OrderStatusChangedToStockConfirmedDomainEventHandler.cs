@@ -1,4 +1,4 @@
-﻿namespace eShop.Ordering.API.Application.DomainEventHandlers;
+namespace eShop.Ordering.API.Application.DomainEventHandlers;
 
 public class OrderStatusChangedToStockConfirmedDomainEventHandler
                 : INotificationHandler<OrderStatusChangedToStockConfirmedDomainEvent>
@@ -25,9 +25,22 @@ public class OrderStatusChangedToStockConfirmedDomainEventHandler
         OrderingApiTrace.LogOrderStatusUpdated(_logger, domainEvent.OrderId, OrderStatus.StockConfirmed);
 
         var order = await _orderRepository.GetAsync(domainEvent.OrderId);
-        var buyer = await _buyerRepository.FindByIdAsync(order.BuyerId.Value);
+        Buyer buyer = null;
+        if (order.BuyerId is int buyerId)
+        {
+            buyer = await _buyerRepository.FindByIdAsync(buyerId);
+        }
 
-        var integrationEvent = new OrderStatusChangedToStockConfirmedIntegrationEvent(order.Id, order.OrderStatus, buyer.Name, buyer.IdentityGuid);
+        var buyerName = buyer?.Name ?? string.Empty;
+        var buyerIdentityGuid = buyer?.IdentityGuid ?? string.Empty;
+
+        var integrationEvent = new OrderStatusChangedToStockConfirmedIntegrationEvent(
+            order.Id,
+            order.OrderStatus,
+            buyerName,
+            buyerIdentityGuid,
+            order.PaymentMethod,
+            order.PayPalOrderId);
         await _orderingIntegrationEventService.AddAndSaveEventAsync(integrationEvent);
     }
 }
