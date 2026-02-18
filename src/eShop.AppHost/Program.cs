@@ -1,5 +1,7 @@
 using eShop.AppHost;
 
+const string DefaultPayPalEnvironment = "Sandbox";
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 builder.AddForwardedHeaders();
@@ -23,6 +25,10 @@ var launchProfileName = ShouldUseHttpForEndpoints() ? "http" : "https";
 var payPalClientId = builder.Configuration["PayPalOptions:ClientId"];
 var payPalClientSecret = builder.Configuration["PayPalOptions:ClientSecret"];
 var payPalEnvironment = builder.Configuration["PayPalOptions:Environment"];
+if (string.IsNullOrWhiteSpace(payPalEnvironment))
+{
+    payPalEnvironment = DefaultPayPalEnvironment;
+}
 
 // Allow tests (e.g., Playwright) to opt out of fail-fast PayPal validation via an environment variable.
 var skipPayPalValidation = ShouldSkipPayPalValidation();
