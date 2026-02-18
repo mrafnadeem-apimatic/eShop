@@ -1,3 +1,4 @@
+#nullable enable
 namespace eShop.PaymentProcessor.IntegrationEvents.Events;
 
 public record OrderStatusChangedToStockConfirmedIntegrationEvent(
@@ -10,4 +11,4 @@ public record OrderStatusChangedToStockConfirmedIntegrationEvent(
     /// <summary>
     /// PayPal order identifier when the payment method is PayPal.
     /// </summary>
-    string PayPalOrderId = null) : IntegrationEvent;
+    string? PayPalOrderId = null) : IntegrationEvent;
