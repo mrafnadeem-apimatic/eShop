@@ -219,9 +219,8 @@ public class PayPalCheckoutService : IPayPalCheckoutService
             {
                 _logger.LogError(
                     ex,
-                    "Error creating PayPal order for basket {BasketId} and user {UserId}.",
-                    basketId,
-                    userId);
+                    "Error creating PayPal order for basket {BasketId}.",
+                    basketId);
             }
 
             throw;
