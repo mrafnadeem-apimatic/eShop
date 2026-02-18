@@ -58,7 +58,7 @@ public static class Extensions
                 .Environment(environment)
                 .LoggingConfig(config => config
                     .LogLevel(LogLevel.Information)
-                    .RequestConfig(reqConfig => reqConfig.Body(true))
+                    .RequestConfig(reqConfig => reqConfig.Body(false))
                     .ResponseConfig(respConfig => respConfig.Headers(true)))
                 .Build();
         });
