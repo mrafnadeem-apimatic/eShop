@@ -160,7 +160,7 @@ public static class OrdersApi
             else
             {
                 // For non-card payments (e.g., PayPal) card details are not required
-                maskedCCNumber = request.CardNumber ?? string.Empty;
+                maskedCCNumber = string.Empty;
             }
 
             var createOrderCommand = new CreateOrderCommand(
