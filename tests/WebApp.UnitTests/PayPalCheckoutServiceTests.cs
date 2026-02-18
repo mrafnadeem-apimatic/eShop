@@ -23,15 +23,10 @@ public class PayPalCheckoutServiceTests
             sessionStore: Substitute.For<IPayPalCheckoutSessionStore>());
 
         // Act & Assert
-        try
-        {
-            await service.CreateOrderForBasketAsync(string.Empty, "user-1", TestContext.CancellationToken);
-            Assert.Fail("Expected ArgumentException to be thrown for missing basketId.");
-        }
-        catch (ArgumentException ex)
-        {
-            Assert.AreEqual("basketId", ex.ParamName);
-        }
+        var exception = await Assert.ThrowsExactlyAsync<ArgumentException>(
+            () => service.CreateOrderForBasketAsync(string.Empty, "user-1", TestContext.CancellationToken));
+
+        Assert.AreEqual("basketId", exception.ParamName);
     }
 
     [TestMethod]
@@ -44,15 +39,10 @@ public class PayPalCheckoutServiceTests
             sessionStore: Substitute.For<IPayPalCheckoutSessionStore>());
 
         // Act & Assert
-        try
-        {
-            await service.CreateOrderForBasketAsync("basket-1", " ", TestContext.CancellationToken);
-            Assert.Fail("Expected ArgumentException to be thrown for missing userId.");
-        }
-        catch (ArgumentException ex)
-        {
-            Assert.AreEqual("userId", ex.ParamName);
-        }
+        var exception = await Assert.ThrowsExactlyAsync<ArgumentException>(
+            () => service.CreateOrderForBasketAsync("basket-1", " ", TestContext.CancellationToken));
+
+        Assert.AreEqual("userId", exception.ParamName);
     }
 
     [TestMethod]
@@ -70,14 +60,8 @@ public class PayPalCheckoutServiceTests
             sessionStore: Substitute.For<IPayPalCheckoutSessionStore>());
 
         // Act & Assert
-        try
-        {
-            await service.CreateOrderForBasketAsync("basket-1", "user-1", TestContext.CancellationToken);
-            Assert.Fail("Expected InvalidOperationException to be thrown for empty basket.");
-        }
-        catch (InvalidOperationException)
-        {
-        }
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(
+            () => service.CreateOrderForBasketAsync("basket-1", "user-1", TestContext.CancellationToken));
     }
 
     [TestMethod]
@@ -158,7 +142,7 @@ public class PayPalCheckoutServiceTests
         // Total should be (10.00 * 2) + (5.50 * 1) = 25.50
         Assert.AreEqual(25.50m, capturedRequest.Total);
 
-        Assert.AreEqual(basketItems.Length, capturedRequest.Items.Count);
+        Assert.HasCount(basketItems.Length, capturedRequest.Items);
 
         var requestItems = capturedRequest.Items.ToArray();
         for (var i = 0; i < basketItems.Length; i++)
