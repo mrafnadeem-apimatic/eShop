@@ -1,3 +1,4 @@
+#nullable enable
 namespace eShop.Ordering.UnitTests.Application;
 
 using eShop.Ordering.API.Application.DomainEventHandlers;
@@ -19,7 +20,7 @@ public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandlerTests
 
     private static (Order Order, OrderStartedDomainEvent DomainEvent) CreateOrderStartedEvent(
         string paymentMethod,
-        string payPalOrderId = null)
+        string? payPalOrderId = null)
     {
         var address = new Address("street", "city", "state", "country", "zipcode");
         var order = new Order(
@@ -60,9 +61,9 @@ public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandlerTests
         unitOfWork.SaveEntitiesAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(true));
         buyerRepository.UnitOfWork.Returns(unitOfWork);
 
-        buyerRepository.FindAsync(Arg.Any<string>()).Returns((Buyer)null);
+        buyerRepository.FindAsync(Arg.Any<string>()).Returns((Buyer?)null);
 
-        Buyer addedBuyer = null;
+        Buyer? addedBuyer = null;
         buyerRepository
             .When(r => r.Add(Arg.Any<Buyer>()))
             .Do(callInfo =>
@@ -96,9 +97,9 @@ public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandlerTests
         unitOfWork.SaveEntitiesAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(true));
         buyerRepository.UnitOfWork.Returns(unitOfWork);
 
-        buyerRepository.FindAsync(Arg.Any<string>()).Returns((Buyer)null);
+        buyerRepository.FindAsync(Arg.Any<string>()).Returns((Buyer?)null);
 
-        Buyer addedBuyer = null;
+        Buyer? addedBuyer = null;
         buyerRepository
             .When(r => r.Add(Arg.Any<Buyer>()))
             .Do(callInfo =>
