@@ -145,7 +145,10 @@ public static class OrdersApi
             {
                 if (string.IsNullOrEmpty(request.CardNumber) || request.CardNumber.Length < 4)
                 {
-                    services.Logger.LogWarning("Invalid card number provided for card payment - {@Request}", request);
+                    services.Logger.LogWarning(
+                        "Invalid card number provided for card payment - UserId: {UserId}, PaymentMethod: {PaymentMethod}",
+                        request.UserId,
+                        paymentMethod);
                     return TypedResults.BadRequest("Invalid card number.");
                 }
 
