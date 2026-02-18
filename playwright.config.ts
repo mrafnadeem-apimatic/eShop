@@ -2,6 +2,9 @@ import { defineConfig, devices } from '@playwright/test';
 require("dotenv").config({ path: "./.env" });
 import path from 'path';
 
+// Ensure PayPal startup validation is skipped when running Playwright tests.
+process.env.ESHOP_SKIP_PAYPAL_VALIDATION = '1';
+
 export const STORAGE_STATE = path.join(__dirname, 'playwright/.auth/user.json');
 
 /**
@@ -85,11 +88,14 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'dotnet run --project src/eShop.AppHost/eShop.AppHost.csproj',
-    url: 'http://localhost:5045',
-    reuseExistingServer: !process.env.CI,
-    stderr: 'pipe',
-    stdout: 'pipe',
-    timeout: process.env.CI ? (5 * 60_000) : 60_000,
+  command: 'dotnet run --project src/eShop.AppHost/eShop.AppHost.csproj',
+  url: 'http://localhost:5045',
+  reuseExistingServer: !process.env.CI,
+  stderr: 'pipe',
+  stdout: 'pipe',
+  timeout: process.env.CI ? (5 * 60_000) : 60_000,
+  env: {
+    ESHOP_SKIP_PAYPAL_VALIDATION: '1',
+  },
   },
 });

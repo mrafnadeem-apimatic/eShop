@@ -24,15 +24,21 @@ var payPalClientId = builder.Configuration["PayPalOptions:ClientId"];
 var payPalClientSecret = builder.Configuration["PayPalOptions:ClientSecret"];
 var payPalEnvironment = builder.Configuration["PayPalOptions:Environment"];
 
-// Fail fast if required PayPal credentials are not configured.
-if (string.IsNullOrWhiteSpace(payPalClientId))
-{
-    throw new InvalidOperationException("PayPalOptions:ClientId must be configured for the application to start.");
-}
+// Allow tests (e.g., Playwright) to opt out of fail-fast PayPal validation via an environment variable.
+var skipPayPalValidation = ShouldSkipPayPalValidation();
 
-if (string.IsNullOrWhiteSpace(payPalClientSecret))
+// Fail fast if required PayPal credentials are not configured, unless validation has been explicitly skipped for tests.
+if (!skipPayPalValidation)
 {
-    throw new InvalidOperationException("PayPalOptions:ClientSecret must be configured for the application to start.");
+    if (string.IsNullOrWhiteSpace(payPalClientId))
+    {
+        throw new InvalidOperationException("PayPalOptions:ClientId must be configured for the application to start.");
+    }
+
+    if (string.IsNullOrWhiteSpace(payPalClientSecret))
+    {
+        throw new InvalidOperationException("PayPalOptions:ClientSecret must be configured for the application to start.");
+    }
 }
 
 // Services
@@ -130,6 +136,18 @@ builder.Build().Run();
 static bool ShouldUseHttpForEndpoints()
 {
     const string EnvVarName = "ESHOP_USE_HTTP_ENDPOINTS";
+    var envValue = Environment.GetEnvironmentVariable(EnvVarName);
+
+    // Attempt to parse the environment variable value; return true if it's exactly "1".
+    return int.TryParse(envValue, out int result) && result == 1;
+}
+
+// For test use only.
+// Looks for an environment variable that disables fail-fast PayPal configuration validation.
+// This is useful for Playwright tests where real PayPal credentials are not available.
+static bool ShouldSkipPayPalValidation()
+{
+    const string EnvVarName = "ESHOP_SKIP_PAYPAL_VALIDATION";
     var envValue = Environment.GetEnvironmentVariable(EnvVarName);
 
     // Attempt to parse the environment variable value; return true if it's exactly "1".
