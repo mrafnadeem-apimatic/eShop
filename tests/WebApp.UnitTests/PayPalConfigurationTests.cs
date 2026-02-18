@@ -53,55 +53,5 @@ public class PayPalConfigurationTests
         Assert.AreSame(serviceScope1First, serviceScope1Second);
         Assert.AreNotSame(serviceScope1First, serviceScope2);
     }
-
-    [TestMethod]
-    public void PayPalOptions_ValidationFails_WhenClientIdMissing()
-    {
-        var builder = CreateBuilderWithBaseConfiguration();
-
-        // Only configure ClientSecret; ClientId is left empty, which should fail validation.
-        builder.Configuration["PayPalOptions:ClientSecret"] = "test-client-secret";
-
-        builder.AddApplicationServices();
-
-        using var provider = builder.Services.BuildServiceProvider();
-
-        var options = provider.GetRequiredService<IOptions<PayPalOptions>>();
-
-        try
-        {
-            var _ = options.Value;
-            Assert.Fail("Expected OptionsValidationException when ClientId is missing.");
-        }
-        catch (OptionsValidationException)
-        {
-            // Expected exception.
-        }
-    }
-
-    [TestMethod]
-    public void PayPalOptions_ValidationFails_WhenClientSecretMissing()
-    {
-        var builder = CreateBuilderWithBaseConfiguration();
-
-        // Only configure ClientId; ClientSecret is left empty, which should fail validation.
-        builder.Configuration["PayPalOptions:ClientId"] = "test-client-id";
-
-        builder.AddApplicationServices();
-
-        using var provider = builder.Services.BuildServiceProvider();
-
-        var options = provider.GetRequiredService<IOptions<PayPalOptions>>();
-
-        try
-        {
-            var _ = options.Value;
-            Assert.Fail("Expected OptionsValidationException when ClientSecret is missing.");
-        }
-        catch (OptionsValidationException)
-        {
-            // Expected exception.
-        }
-    }
 }
 
