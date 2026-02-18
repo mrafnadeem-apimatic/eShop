@@ -1,4 +1,7 @@
 using System.Globalization;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 using PaypalServerSdk.Standard;
@@ -185,13 +188,15 @@ public class PayPalCheckoutService : IPayPalCheckoutService
 
         try
         {
+            var contentHash = ComputeBasketContentHash(basketItems);
+
             var request = new PayPalOrderRequest(
                 BasketId: basketId,
                 UserId: userId,
                 Items: items,
                 Total: total,
                 CurrencyCode: DefaultCurrencyCode,
-                IdempotencyKey: BuildIdempotencyKey(basketId, userId));
+                IdempotencyKey: BuildIdempotencyKey(basketId, userId, contentHash));
 
             var response = await _ordersClient.CreateOrderAsync(request, cancellationToken);
 
@@ -223,7 +228,31 @@ public class PayPalCheckoutService : IPayPalCheckoutService
         }
     }
 
-    private static string BuildIdempotencyKey(string basketId, string userId)
-        => $"create-{userId}-{basketId}";
+    private static string BuildIdempotencyKey(string basketId, string userId, string contentHash)
+        => $"create-{userId}-{basketId}-{contentHash}";
+
+    private static string ComputeBasketContentHash(IReadOnlyCollection<BasketItem> basketItems)
+    {
+        var orderedItems = basketItems
+            .OrderBy(item => item.ProductId)
+            .ThenBy(item => item.Id, StringComparer.Ordinal);
+
+        var builder = new StringBuilder();
+
+        foreach (var item in orderedItems)
+        {
+            builder
+                .Append(item.ProductId)
+                .Append(':')
+                .Append(item.UnitPrice.ToString("F2", CultureInfo.InvariantCulture))
+                .Append(':')
+                .Append(item.Quantity)
+                .Append(';');
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(builder.ToString());
+        var hashBytes = SHA256.HashData(bytes);
+        return Convert.ToHexString(hashBytes);
+    }
 }
 

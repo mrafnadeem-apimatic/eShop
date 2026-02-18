@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -150,7 +151,9 @@ public class PayPalCheckoutServiceTests
         Assert.AreEqual(basketId, capturedRequest.BasketId);
         Assert.AreEqual(userId, capturedRequest.UserId);
         Assert.AreEqual("USD", capturedRequest.CurrencyCode);
-        Assert.AreEqual("create-user-456-basket-123", capturedRequest.IdempotencyKey);
+        Assert.IsTrue(
+            capturedRequest.IdempotencyKey.StartsWith("create-user-456-basket-123-", StringComparison.Ordinal),
+            $"Unexpected idempotency key format: {capturedRequest.IdempotencyKey}");
 
         // Total should be (10.00 * 2) + (5.50 * 1) = 25.50
         Assert.AreEqual(25.50m, capturedRequest.Total);
@@ -175,6 +178,83 @@ public class PayPalCheckoutServiceTests
                 s.PaypalOrderId == "PAYPAL-ORDER-ID" &&
                 s.BasketId == basketId &&
                 s.UserId == userId), TestContext.CancellationToken);
+    }
+
+    [TestMethod]
+    public async Task CreateOrderForBasketAsync_ProducesDifferentIdempotencyKeys_ForDifferentBasketContents()
+    {
+        // Arrange
+        var firstBasketItems = new[]
+        {
+            new BasketItem
+            {
+                Id = "item-1",
+                ProductId = 1,
+                ProductName = "Item One",
+                UnitPrice = 10.00m,
+                OldUnitPrice = 0m,
+                Quantity = 1,
+            },
+        };
+
+        var secondBasketItems = new[]
+        {
+            new BasketItem
+            {
+                Id = "item-1",
+                ProductId = 1,
+                ProductName = "Item One",
+                UnitPrice = 10.00m,
+                OldUnitPrice = 0m,
+                Quantity = 2,
+            },
+        };
+
+        var basketState = Substitute.For<IBasketState>();
+        basketState
+            .GetBasketItemsAsync()
+            .Returns(
+                Task.FromResult<IReadOnlyCollection<BasketItem>>(firstBasketItems),
+                Task.FromResult<IReadOnlyCollection<BasketItem>>(secondBasketItems));
+
+        var ordersClient = Substitute.For<IPayPalOrdersClient>();
+        var responseFromClient = new PayPalOrderResponse(
+            PaypalOrderId: "PAYPAL-ORDER-ID",
+            ApprovalUrl: "https://example.test/approval");
+
+        ordersClient
+            .CreateOrderAsync(Arg.Any<PayPalOrderRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(responseFromClient));
+
+        var sessionStore = Substitute.For<IPayPalCheckoutSessionStore>();
+
+        var service = CreateService(
+            ordersClient: ordersClient,
+            basketState: basketState,
+            sessionStore: sessionStore);
+
+        var basketId = "basket-123";
+        var userId = "user-456";
+
+        // Act
+        await service.CreateOrderForBasketAsync(basketId, userId, TestContext.CancellationToken);
+        await service.CreateOrderForBasketAsync(basketId, userId, TestContext.CancellationToken);
+
+        // Assert
+        var capturedRequests = ordersClient.ReceivedCalls()
+            .Where(call => call.GetMethodInfo().Name == nameof(IPayPalOrdersClient.CreateOrderAsync))
+            .Select(call => call.GetArguments().OfType<PayPalOrderRequest>().Single())
+            .ToArray();
+
+        Assert.AreEqual(2, capturedRequests.Length);
+
+        var firstKey = capturedRequests[0].IdempotencyKey;
+        var secondKey = capturedRequests[1].IdempotencyKey;
+
+        Assert.AreNotEqual(
+            firstKey,
+            secondKey,
+            "Expected different idempotency keys for different basket contents.");
     }
 
     private static PayPalCheckoutService CreateService(
