@@ -49,6 +49,8 @@ public sealed class InMemoryPayPalCheckoutSessionStore : IPayPalCheckoutSessionS
 
     public Task StoreSessionAsync(PayPalCheckoutSession session, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(session);
+
         _sessions[session.PaypalOrderId] = session;
 
         if (_logger.IsEnabled(LogLevel.Debug))
