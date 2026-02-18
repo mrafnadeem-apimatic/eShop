@@ -16,6 +16,8 @@ builder.Services.AddOptions<PaymentOptions>()
 builder.Services.AddOptions<PayPalOptions>()
     .BindConfiguration(nameof(PayPalOptions));
 
+var isDevelopment = builder.Environment.IsDevelopment();
+
 builder.Services.AddSingleton<PaypalServerSdkClient>(sp =>
 {
     var options = sp.GetRequiredService<IOptions<PayPalOptions>>().Value;
@@ -35,8 +37,8 @@ builder.Services.AddSingleton<PaypalServerSdkClient>(sp =>
         .Environment(environment)
         .LoggingConfig(config => config
             .LogLevel(LogLevel.Information)
-            .RequestConfig(reqConfig => reqConfig.Body(true))
-            .ResponseConfig(respConfig => respConfig.Headers(true)))
+            .RequestConfig(reqConfig => reqConfig.Body(isDevelopment))
+            .ResponseConfig(respConfig => respConfig.Headers(isDevelopment)))
         .Build();
 });
 
