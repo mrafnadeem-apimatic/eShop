@@ -58,7 +58,7 @@ public class PayPalCheckoutApiTests
         httpContext.User = new ClaimsPrincipal(new ClaimsIdentity()); // Not authenticated
 
         var service = Substitute.For<IPayPalCheckoutService>();
-        var logger = Substitute.For<ILogger<PayPalCheckoutService>>();
+        var logger = Substitute.For<ILogger<PayPalCheckoutApiLogCategory>>();
 
         // Act
         var result = await PayPalCheckoutApi.CreatePayPalOrderAsync(httpContext, service, logger);
@@ -84,7 +84,7 @@ public class PayPalCheckoutApiTests
         };
 
         var service = Substitute.For<IPayPalCheckoutService>();
-        var logger = Substitute.For<ILogger<PayPalCheckoutService>>();
+        var logger = Substitute.For<ILogger<PayPalCheckoutApiLogCategory>>();
 
         // Act
         var result = await PayPalCheckoutApi.CreatePayPalOrderAsync(httpContext, service, logger);
@@ -127,7 +127,7 @@ public class PayPalCheckoutApiTests
             .CreateOrderForBasketAsync(userId, userId, httpContext.RequestAborted)
             .Returns(expectedResponse);
 
-        var logger = Substitute.For<ILogger<PayPalCheckoutService>>();
+        var logger = Substitute.For<ILogger<PayPalCheckoutApiLogCategory>>();
 
         // Act
         var result = await PayPalCheckoutApi.CreatePayPalOrderAsync(httpContext, service, logger);
@@ -160,7 +160,7 @@ public class PayPalCheckoutApiTests
             .CreateOrderForBasketAsync(userId, userId, httpContext.RequestAborted)
             .Returns(Task.FromException<PayPalOrderResponse>(new InvalidOperationException("Boom")));
 
-        var logger = Substitute.For<ILogger<PayPalCheckoutService>>();
+        var logger = Substitute.For<ILogger<PayPalCheckoutApiLogCategory>>();
 
         // Act
         var result = await PayPalCheckoutApi.CreatePayPalOrderAsync(httpContext, service, logger);
