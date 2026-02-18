@@ -25,7 +25,12 @@ function loadPayPalScript(clientId) {
 
 export async function initializePayPalButton(dotNetRef, createOrderUrl, clientId) {
     if (!paypalScriptPromise) {
-        paypalScriptPromise = loadPayPalScript(clientId);
+        paypalScriptPromise = loadPayPalScript(clientId)
+        paypalScriptPromise.catch(error => {
+            console.error('Failed to load PayPal SDK.', error);
+            paypalScriptPromise = null;
+            throw error;
+        });
     }
 
     await paypalScriptPromise;
