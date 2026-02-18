@@ -29,6 +29,13 @@ public class OrderStatusChangedToAwaitingValidationDomainEventHandler
         if (order.BuyerId is int buyerId)
         {
             buyer = await _buyerRepository.FindByIdAsync(buyerId);
+            if (buyer is null)
+            {
+                _logger.LogWarning(
+                    "Buyer with id {BuyerId} not found for order {OrderId}; publishing event with empty buyer info.",
+                    buyerId,
+                    order.Id);
+            }
         }
 
         var orderStockList = domainEvent.OrderItems
