@@ -20,9 +20,11 @@ builder.Services.AddSingleton<PaypalServerSdkClient>(sp =>
 {
     var options = sp.GetRequiredService<IOptions<PayPalOptions>>().Value;
 
-    // Currently, the SDK exposes only the Sandbox environment. Map configuration
-    // to Sandbox for now; production/live mapping can be added when available.
-    var environment = PaypalEnvironment.Sandbox;
+    // Map the configured PayPal environment (e.g. "Sandbox" or "Production") to the SDK enum.
+    // Values other than "Production" default to Sandbox.
+    var environment = string.Equals(options.Environment, "Production", StringComparison.OrdinalIgnoreCase)
+        ? PaypalEnvironment.Production
+        : PaypalEnvironment.Sandbox;
 
     return new PaypalServerSdkClient.Builder()
         .ClientCredentialsAuth(
