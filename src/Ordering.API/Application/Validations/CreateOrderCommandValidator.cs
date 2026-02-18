@@ -14,6 +14,14 @@ public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
             .Must(ContainOrderItems)
             .WithMessage("No order items found");
 
+        // Allowed payment methods
+        RuleFor(command => command.PaymentMethod)
+            .Must(paymentMethod =>
+                string.IsNullOrWhiteSpace(paymentMethod)
+                || paymentMethod.Equals("Card", StringComparison.OrdinalIgnoreCase)
+                || paymentMethod.Equals("PayPal", StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Unsupported payment method.");
+
         // Card-specific validation rules
         When(IsCardPayment, () =>
         {
