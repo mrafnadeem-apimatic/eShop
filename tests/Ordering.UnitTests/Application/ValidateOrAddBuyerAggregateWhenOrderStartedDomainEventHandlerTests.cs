@@ -63,7 +63,14 @@ public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandlerTests
         buyerRepository.FindAsync(Arg.Any<string>()).Returns((Buyer)null);
 
         Buyer addedBuyer = null;
-        buyerRepository.Add(Arg.Do<Buyer>(b => addedBuyer = b)).Returns(callInfo => addedBuyer);
+        buyerRepository
+            .When(r => r.Add(Arg.Any<Buyer>()))
+            .Do(callInfo =>
+            {
+                var buyer = callInfo.Arg<Buyer>();
+                buyer.SetIdForTesting(1);
+                addedBuyer = buyer;
+            });
 
         var (_, domainEvent) = CreateOrderStartedEvent(paymentMethod: "Card");
         var handler = CreateHandler(buyerRepository, integrationEventService);
@@ -92,7 +99,14 @@ public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandlerTests
         buyerRepository.FindAsync(Arg.Any<string>()).Returns((Buyer)null);
 
         Buyer addedBuyer = null;
-        buyerRepository.Add(Arg.Do<Buyer>(b => addedBuyer = b)).Returns(callInfo => addedBuyer);
+        buyerRepository
+            .When(r => r.Add(Arg.Any<Buyer>()))
+            .Do(callInfo =>
+            {
+                var buyer = callInfo.Arg<Buyer>();
+                buyer.SetIdForTesting(1);
+                addedBuyer = buyer;
+            });
 
         var (_, domainEvent) = CreateOrderStartedEvent(paymentMethod: "PayPal", payPalOrderId: "PAYPAL-123");
         var handler = CreateHandler(buyerRepository, integrationEventService);
