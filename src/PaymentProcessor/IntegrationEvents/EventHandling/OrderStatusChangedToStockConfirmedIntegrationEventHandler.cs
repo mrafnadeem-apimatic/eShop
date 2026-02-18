@@ -1,3 +1,4 @@
+using System.Net.Http;
 using eShop.PaymentProcessor.PayPal;
 
 namespace eShop.PaymentProcessor.IntegrationEvents.EventHandling;
@@ -70,13 +71,46 @@ public class OrderStatusChangedToStockConfirmedIntegrationEventHandler(
 
         var idempotencyKey = BuildPayPalCaptureIdempotencyKey(@event.OrderId, @event.PayPalOrderId);
 
-        var succeeded = await payPalOrderCaptureClient.CaptureOrderAsync(
-            @event.PayPalOrderId,
-            idempotencyKey);
+        try
+        {
+            var succeeded = await payPalOrderCaptureClient.CaptureOrderAsync(
+                @event.PayPalOrderId,
+                idempotencyKey);
 
-        return succeeded
-            ? new OrderPaymentSucceededIntegrationEvent(@event.OrderId)
-            : new OrderPaymentFailedIntegrationEvent(@event.OrderId);
+            return succeeded
+                ? new OrderPaymentSucceededIntegrationEvent(@event.OrderId)
+                : new OrderPaymentFailedIntegrationEvent(@event.OrderId);
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(
+                ex,
+                "HTTP error while capturing PayPal payment for OrderId {OrderId} and PayPalOrderId {PayPalOrderId}.",
+                @event.OrderId,
+                @event.PayPalOrderId);
+
+            return new OrderPaymentFailedIntegrationEvent(@event.OrderId);
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogError(
+                ex,
+                "Task canceled while capturing PayPal payment for OrderId {OrderId} and PayPalOrderId {PayPalOrderId}.",
+                @event.OrderId,
+                @event.PayPalOrderId);
+
+            return new OrderPaymentFailedIntegrationEvent(@event.OrderId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Unexpected error while capturing PayPal payment for OrderId {OrderId} and PayPalOrderId {PayPalOrderId}.",
+                @event.OrderId,
+                @event.PayPalOrderId);
+
+            return new OrderPaymentFailedIntegrationEvent(@event.OrderId);
+        }
     }
 
     private static string BuildPayPalCaptureIdempotencyKey(int orderId, string paypalOrderId)
