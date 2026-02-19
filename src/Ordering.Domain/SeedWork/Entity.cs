@@ -1,4 +1,4 @@
-﻿namespace eShop.Ordering.Domain.Seedwork;
+namespace eShop.Ordering.Domain.Seedwork;
 
 public abstract class Entity
 {
@@ -14,6 +14,12 @@ public abstract class Entity
         {
             _Id = value;
         }
+    }
+
+    // Helper intended for tests to simulate persistence layer ID assignment.
+    internal void SetIdForTesting(int id)
+    {
+        Id = id;
     }
 
     private List<INotification> _domainEvents;

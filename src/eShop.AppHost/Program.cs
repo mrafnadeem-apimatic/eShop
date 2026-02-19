@@ -1,4 +1,6 @@
-﻿using eShop.AppHost;
+using eShop.AppHost;
+
+const string DefaultPayPalEnvironment = "Sandbox";
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -18,6 +20,32 @@ var orderDb = postgres.AddDatabase("orderingdb");
 var webhooksDb = postgres.AddDatabase("webhooksdb");
 
 var launchProfileName = ShouldUseHttpForEndpoints() ? "http" : "https";
+
+// PayPal configuration (from AppHost configuration; typically user secrets or environment)
+var payPalClientId = builder.Configuration["PayPalOptions:ClientId"];
+var payPalClientSecret = builder.Configuration["PayPalOptions:ClientSecret"];
+var payPalEnvironment = builder.Configuration["PayPalOptions:Environment"];
+if (string.IsNullOrWhiteSpace(payPalEnvironment))
+{
+    payPalEnvironment = DefaultPayPalEnvironment;
+}
+
+// Allow tests (e.g., Playwright) to opt out of fail-fast PayPal validation via an environment variable.
+var skipPayPalValidation = ShouldSkipPayPalValidation();
+
+// Fail fast if required PayPal credentials are not configured, unless validation has been explicitly skipped for tests.
+if (!skipPayPalValidation)
+{
+    if (string.IsNullOrWhiteSpace(payPalClientId))
+    {
+        throw new InvalidOperationException("PayPalOptions:ClientId must be configured for the application to start.");
+    }
+
+    if (string.IsNullOrWhiteSpace(payPalClientSecret))
+    {
+        throw new InvalidOperationException("PayPalOptions:ClientSecret must be configured for the application to start.");
+    }
+}
 
 // Services
 var identityApi = builder.AddProject<Projects.Identity_API>("identity-api", launchProfileName)
@@ -48,7 +76,10 @@ builder.AddProject<Projects.OrderProcessor>("order-processor")
     .WaitFor(orderingApi); // wait for the orderingApi to be ready because that contains the EF migrations
 
 builder.AddProject<Projects.PaymentProcessor>("payment-processor")
-    .WithReference(rabbitMq).WaitFor(rabbitMq);
+    .WithReference(rabbitMq).WaitFor(rabbitMq)
+    .WithEnvironment("PayPalOptions__ClientId", payPalClientId)
+    .WithEnvironment("PayPalOptions__ClientSecret", payPalClientSecret)
+    .WithEnvironment("PayPalOptions__Environment", payPalEnvironment);
 
 var webHooksApi = builder.AddProject<Projects.Webhooks_API>("webhooks-api")
     .WithReference(rabbitMq).WaitFor(rabbitMq)
@@ -72,7 +103,12 @@ var webApp = builder.AddProject<Projects.WebApp>("webapp", launchProfileName)
     .WithReference(catalogApi)
     .WithReference(orderingApi)
     .WithReference(rabbitMq).WaitFor(rabbitMq)
-    .WithEnvironment("IdentityUrl", identityEndpoint);
+    .WithEnvironment("IdentityUrl", identityEndpoint)
+    .WithEnvironment("PayPalOptions__ClientId", payPalClientId)
+    .WithEnvironment("PayPalOptions__ClientSecret", payPalClientSecret)
+    .WithEnvironment("PayPalOptions__Environment", payPalEnvironment);
+
+
 
 // set to true if you want to use OpenAI
 bool useOpenAI = false;
@@ -106,6 +142,18 @@ builder.Build().Run();
 static bool ShouldUseHttpForEndpoints()
 {
     const string EnvVarName = "ESHOP_USE_HTTP_ENDPOINTS";
+    var envValue = Environment.GetEnvironmentVariable(EnvVarName);
+
+    // Attempt to parse the environment variable value; return true if it's exactly "1".
+    return int.TryParse(envValue, out int result) && result == 1;
+}
+
+// For test use only.
+// Looks for an environment variable that disables fail-fast PayPal configuration validation.
+// This is useful for Playwright tests where real PayPal credentials are not available.
+static bool ShouldSkipPayPalValidation()
+{
+    const string EnvVarName = "ESHOP_SKIP_PAYPAL_VALIDATION";
     var envValue = Environment.GetEnvironmentVariable(EnvVarName);
 
     // Attempt to parse the environment variable value; return true if it's exactly "1".

@@ -1,4 +1,4 @@
-﻿namespace eShop.Ordering.API.Application.DomainEventHandlers;
+namespace eShop.Ordering.API.Application.DomainEventHandlers;
 
 public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler
                     : INotificationHandler<OrderStartedDomainEvent>
@@ -19,6 +19,10 @@ public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler
 
     public async Task Handle(OrderStartedDomainEvent domainEvent, CancellationToken cancellationToken)
     {
+        var paymentMethod = string.IsNullOrWhiteSpace(domainEvent.PaymentMethod)
+            ? "Card"
+            : domainEvent.PaymentMethod;
+
         var cardTypeId = domainEvent.CardTypeId != 0 ? domainEvent.CardTypeId : 1;
         var buyer = await _buyerRepository.FindAsync(domainEvent.UserId);
         var buyerExisted = buyer is not null;
@@ -31,23 +35,37 @@ public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler
         // REVIEW: The event this creates needs to be sent after SaveChanges has propagated the buyer Id. It currently only
         // works by coincidence. If we remove HiLo or if anything decides to yield earlier, it will break.
 
-        buyer.VerifyOrAddPaymentMethod(cardTypeId,
-                                        $"Payment Method on {DateTime.UtcNow}",
-                                        domainEvent.CardNumber,
-                                        domainEvent.CardSecurityNumber,
-                                        domainEvent.CardHolderName,
-                                        domainEvent.CardExpiration,
-                                        domainEvent.Order.Id);
+        // For card-based payments, we create or verify a reusable payment method on the buyer.
+        // For PayPal (or other non-card) payments, we only ensure the buyer exists and skip card-specific validation.
+        if (string.Equals(paymentMethod, "Card", StringComparison.OrdinalIgnoreCase))
+        {
+            buyer.VerifyOrAddPaymentMethod(
+                cardTypeId,
+                $"Payment Method on {DateTime.UtcNow}",
+                domainEvent.CardNumber,
+                domainEvent.CardSecurityNumber,
+                domainEvent.CardHolderName,
+                domainEvent.CardExpiration,
+                domainEvent.Order.Id);
+        }
 
         if (!buyerExisted)
         {
             _buyerRepository.Add(buyer);
         }
 
+        // Ensure the order is associated with this buyer even for non-card
+        // payment methods so that queries by buyer identity continue to work.
+        domainEvent.Order.SetBuyerId(buyer.Id);
+
         await _buyerRepository.UnitOfWork
             .SaveEntitiesAsync(cancellationToken);
 
-        var integrationEvent = new OrderStatusChangedToSubmittedIntegrationEvent(domainEvent.Order.Id, domainEvent.Order.OrderStatus, buyer.Name, buyer.IdentityGuid);
+        var integrationEvent = new OrderStatusChangedToSubmittedIntegrationEvent(
+            domainEvent.Order.Id,
+            domainEvent.Order.OrderStatus,
+            buyer.Name,
+            buyer.IdentityGuid);
         await _orderingIntegrationEventService.AddAndSaveEventAsync(integrationEvent);
         OrderingApiTrace.LogOrderBuyerAndPaymentValidatedOrUpdated(_logger, buyer.Id, domainEvent.Order.Id);
     }

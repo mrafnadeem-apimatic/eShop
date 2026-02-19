@@ -1,4 +1,4 @@
-﻿namespace eShop.Ordering.UnitTests.Application;
+namespace eShop.Ordering.UnitTests.Application;
 
 using Microsoft.AspNetCore.Http.HttpResults;
 using eShop.Ordering.API.Application.Queries;
@@ -152,5 +152,108 @@ public class OrdersWebApiTest
         // Assert
         Assert.IsInstanceOfType<Ok<IEnumerable<CardType>>>(result);
         Assert.AreSame(fakeDynamicResult, result.Value);
+    }
+
+    [TestMethod]
+    public async Task Create_order_with_card_payment_and_invalid_card_number_returns_bad_request()
+    {
+        // Arrange
+        _mediatorMock
+            .Send(Arg.Any<IdentifiedCommand<CreateOrderCommand, bool>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(true));
+
+        var orderServices = new OrderServices(_mediatorMock, _orderQueriesMock, _identityServiceMock, _loggerMock);
+
+        var items = new List<BasketItem>
+        {
+            new()
+            {
+                Id = "1",
+                ProductId = 1,
+                ProductName = "Test product",
+                UnitPrice = 10m,
+                OldUnitPrice = 10m,
+                Quantity = 1,
+                PictureUrl = "test"
+            }
+        };
+
+        // Card number is too short and should be rejected for card payments.
+        var request = new CreateOrderRequest(
+            UserId: "user-1",
+            UserName: "Test User",
+            City: "City",
+            Street: "Street",
+            State: "State",
+            Country: "Country",
+            ZipCode: "12345",
+            CardNumber: "123",
+            CardHolderName: "Test User",
+            CardExpiration: DateTime.UtcNow.AddYears(1),
+            CardSecurityNumber: "123",
+            CardTypeId: 1,
+            Buyer: "buyer-1",
+            Items: items,
+            PaymentMethod: "Card");
+
+        // Act
+        var result = await OrdersApi.CreateOrderAsync(Guid.NewGuid(), request, orderServices);
+
+        // Assert
+        Assert.IsInstanceOfType<BadRequest<string>>(result.Result);
+    }
+
+    [TestMethod]
+    public async Task Create_order_with_paypal_payment_allows_missing_card_details_and_maps_paypal_metadata()
+    {
+        // Arrange
+        IdentifiedCommand<CreateOrderCommand, bool> sentCommand = null;
+
+        _mediatorMock
+            .Send(Arg.Do<IdentifiedCommand<CreateOrderCommand, bool>>(cmd => sentCommand = cmd), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(true));
+
+        var orderServices = new OrderServices(_mediatorMock, _orderQueriesMock, _identityServiceMock, _loggerMock);
+
+        var items = new List<BasketItem>
+        {
+            new()
+            {
+                Id = "1",
+                ProductId = 1,
+                ProductName = "Test product",
+                UnitPrice = 10m,
+                OldUnitPrice = 10m,
+                Quantity = 1,
+                PictureUrl = "test"
+            }
+        };
+
+        var request = new CreateOrderRequest(
+            UserId: "user-1",
+            UserName: "Test User",
+            City: "City",
+            Street: "Street",
+            State: "State",
+            Country: "Country",
+            ZipCode: "12345",
+            CardNumber: null,
+            CardHolderName: null,
+            CardExpiration: DateTime.UtcNow.AddYears(1),
+            CardSecurityNumber: null,
+            CardTypeId: 0,
+            Buyer: "buyer-1",
+            Items: items,
+            PaymentMethod: "PayPal",
+            PayPalOrderId: "PAYPAL-123");
+
+        // Act
+        var result = await OrdersApi.CreateOrderAsync(Guid.NewGuid(), request, orderServices);
+
+        // Assert
+        Assert.IsInstanceOfType<Ok>(result.Result);
+        Assert.IsNotNull(sentCommand);
+        Assert.AreEqual("PayPal", sentCommand.Command.PaymentMethod);
+        Assert.AreEqual("PAYPAL-123", sentCommand.Command.PayPalOrderId);
     }
 }

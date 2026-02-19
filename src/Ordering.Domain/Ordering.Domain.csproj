@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,6 +7,10 @@
   <ItemGroup>
     <PackageReference Include="MediatR" />
     <PackageReference Include="System.Reflection.TypeExtensions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ordering.UnitTests" />
   </ItemGroup>
 
 </Project>

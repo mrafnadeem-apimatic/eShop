@@ -1,4 +1,4 @@
-﻿namespace eShop.Ordering.UnitTests.Domain;
+namespace eShop.Ordering.UnitTests.Domain;
 
 using eShop.Ordering.Domain.AggregatesModel.OrderAggregate;
 using eShop.Ordering.UnitTests.Domain;
@@ -174,5 +174,44 @@ public class OrderAggregateTest
         fakeOrder.RemoveDomainEvent(@fakeEvent);
         //Assert
         Assert.HasCount(expectedResult, fakeOrder.DomainEvents);
+    }
+
+    [TestMethod]
+    public void Create_order_with_paypal_payment_sets_payment_metadata_and_domain_event()
+    {
+        // Arrange
+        var street = "fakeStreet";
+        var city = "FakeCity";
+        var state = "fakeState";
+        var country = "fakeCountry";
+        var zipcode = "FakeZipCode";
+        var cardTypeId = 5;
+        var cardNumber = "12";
+        var cardSecurityNumber = "123";
+        var cardHolderName = "FakeName";
+        var cardExpiration = DateTime.UtcNow.AddYears(1);
+        var paymentMethod = "PayPal";
+        var payPalOrderId = "PAYPAL-123";
+
+        // Act
+        var order = new Order(
+            "1",
+            "fakeName",
+            new Address(street, city, state, country, zipcode),
+            cardTypeId,
+            cardNumber,
+            cardSecurityNumber,
+            cardHolderName,
+            cardExpiration,
+            paymentMethod: paymentMethod,
+            payPalOrderId: payPalOrderId);
+
+        // Assert
+        Assert.AreEqual(paymentMethod, order.PaymentMethod);
+        Assert.AreEqual(payPalOrderId, order.PayPalOrderId);
+
+        var orderStartedEvent = order.DomainEvents.OfType<OrderStartedDomainEvent>().Single();
+        Assert.AreEqual(paymentMethod, orderStartedEvent.PaymentMethod);
+        Assert.AreEqual(payPalOrderId, orderStartedEvent.PayPalOrderId);
     }
 }

@@ -1,6 +1,7 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http;
 using eShop.WebAppComponents.Catalog;
 using eShop.WebAppComponents.Services;
 
@@ -10,7 +11,8 @@ public class BasketState(
     BasketService basketService,
     CatalogService catalogService,
     OrderingService orderingService,
-    AuthenticationStateProvider authenticationStateProvider) : IBasketState
+    AuthenticationStateProvider authenticationStateProvider,
+    IHttpContextAccessor httpContextAccessor) : IBasketState
 {
     private Task<IReadOnlyCollection<BasketItem>>? _cachedBasket;
     private HashSet<BasketStateChangedSubscription> _changeSubscriptions = new();
@@ -88,6 +90,18 @@ public class BasketState(
         // Get details for the items in the basket
         var orderItems = await FetchBasketItemsAsync();
 
+        // Determine the payment method and any associated PayPal metadata. For the
+        // existing flow, this will continue to be "Card". When the checkout UI
+        // adds a PayPal option, it can set PaymentMethod to "PayPal" and provide
+        // the PayPalOrderId captured from the browser approval step.
+        var paymentMethod = string.IsNullOrWhiteSpace(checkoutInfo.PaymentMethod)
+            ? "Card"
+            : checkoutInfo.PaymentMethod;
+
+        var payPalOrderId = string.Equals(paymentMethod, "PayPal", StringComparison.OrdinalIgnoreCase)
+            ? checkoutInfo.PayPalOrderId
+            : null;
+
         // Call into Ordering.API to create the order using those details
         var request = new CreateOrderRequest(
             UserId: buyerId,
@@ -103,7 +117,9 @@ public class BasketState(
             CardSecurityNumber: "111",
             CardTypeId: checkoutInfo.CardTypeId,
             Buyer: buyerId,
-            Items: [.. orderItems]);
+            Items: [.. orderItems],
+            PaymentMethod: paymentMethod,
+            PayPalOrderId: payPalOrderId);
         await orderingService.CreateOrder(request, checkoutInfo.RequestId);
         await DeleteBasketAsync();
     }
@@ -112,7 +128,20 @@ public class BasketState(
         => Task.WhenAll(_changeSubscriptions.Select(s => s.NotifyAsync()));
 
     private async Task<ClaimsPrincipal> GetUserAsync()
-        => (await authenticationStateProvider.GetAuthenticationStateAsync()).User;
+    {
+        try
+        {
+            // In Blazor component scope, use the AuthenticationStateProvider.
+            return (await authenticationStateProvider.GetAuthenticationStateAsync()).User;
+        }
+        catch (InvalidOperationException)
+        {
+            // When resolved outside of a Blazor circuit (e.g., minimal APIs),
+            // fall back to the current HttpContext user.
+            return httpContextAccessor.HttpContext?.User
+                   ?? new ClaimsPrincipal(new ClaimsIdentity());
+        }
+    }
 
     private Task<IReadOnlyCollection<BasketItem>> FetchBasketItemsAsync()
     {
@@ -169,4 +198,6 @@ public record CreateOrderRequest(
     string CardSecurityNumber,
     int CardTypeId,
     string Buyer,
-    List<BasketItem> Items);
+    List<BasketItem> Items,
+    string PaymentMethod,
+    string? PayPalOrderId);

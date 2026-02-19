@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Http.HttpResults;
 using CardType = eShop.Ordering.API.Application.Queries.CardType;
 using Order = eShop.Ordering.API.Application.Queries.Order;
 
@@ -120,14 +120,16 @@ public static class OrdersApi
         CreateOrderRequest request,
         [AsParameters] OrderServices services)
     {
-        
-        //mask the credit card number
-        
+        // Determine payment method (default to Card for backwards compatibility)
+        var paymentMethod = string.IsNullOrWhiteSpace(request.PaymentMethod)
+            ? "Card"
+            : request.PaymentMethod;
+
         services.Logger.LogInformation(
             "Sending command: {CommandName} - {IdProperty}: {CommandId}",
             request.GetGenericTypeName(),
             nameof(request.UserId),
-            request.UserId); //don't log the request as it has CC number
+            request.UserId); //don't log the request as it has CC / payment data
 
         if (requestId == Guid.Empty)
         {
@@ -137,11 +139,46 @@ public static class OrdersApi
 
         using (services.Logger.BeginScope(new List<KeyValuePair<string, object>> { new("IdentifiedCommandId", requestId) }))
         {
-            var maskedCCNumber = request.CardNumber.Substring(request.CardNumber.Length - 4).PadLeft(request.CardNumber.Length, 'X');
-            var createOrderCommand = new CreateOrderCommand(request.Items, request.UserId, request.UserName, request.City, request.Street,
-                request.State, request.Country, request.ZipCode,
-                maskedCCNumber, request.CardHolderName, request.CardExpiration,
-                request.CardSecurityNumber, request.CardTypeId);
+            string maskedCCNumber;
+
+            if (string.Equals(paymentMethod, "Card", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrEmpty(request.CardNumber) || request.CardNumber.Length < 4)
+                {
+                    services.Logger.LogWarning(
+                        "Invalid card number provided for card payment - UserId: {UserId}, PaymentMethod: {PaymentMethod}",
+                        request.UserId,
+                        paymentMethod);
+                    return TypedResults.BadRequest("Invalid card number.");
+                }
+
+                // Mask the credit card number for logging and downstream processing
+                maskedCCNumber = request.CardNumber
+                    .Substring(request.CardNumber.Length - 4)
+                    .PadLeft(request.CardNumber.Length, 'X');
+            }
+            else
+            {
+                // For non-card payments (e.g., PayPal) card details are not required
+                maskedCCNumber = string.Empty;
+            }
+
+            var createOrderCommand = new CreateOrderCommand(
+                request.Items,
+                request.UserId,
+                request.UserName,
+                request.City,
+                request.Street,
+                request.State,
+                request.Country,
+                request.ZipCode,
+                maskedCCNumber,
+                request.CardHolderName,
+                request.CardExpiration,
+                request.CardSecurityNumber,
+                request.CardTypeId,
+                paymentMethod,
+                request.PayPalOrderId);
 
             var requestCreateOrder = new IdentifiedCommand<CreateOrderCommand, bool>(createOrderCommand, requestId);
 
@@ -182,4 +219,6 @@ public record CreateOrderRequest(
     string CardSecurityNumber,
     int CardTypeId,
     string Buyer,
-    List<BasketItem> Items);
+    List<BasketItem> Items,
+    string PaymentMethod = null,
+    string PayPalOrderId = null);
