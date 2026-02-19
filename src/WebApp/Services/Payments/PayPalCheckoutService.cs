@@ -228,7 +228,23 @@ public class PayPalCheckoutService : IPayPalCheckoutService
     }
 
     private static string BuildIdempotencyKey(string basketId, string userId, string contentHash)
-        => $"create-{userId}-{basketId}-{contentHash}";
+    {
+        // Build a deterministic but length-bounded idempotency key suitable for the
+        // PayPal-Request-Id header. Some environments enforce length limits and will
+        // return INVALID_STRING_LENGTH when very long values are used.
+        var raw = $"{userId}-{basketId}-{contentHash}";
+        var bytes = Encoding.UTF8.GetBytes(raw);
+        var hashBytes = SHA256.HashData(bytes);
+
+        // Derive a GUID from the hash so that:
+        // - The same (userId, basketId, contentHash) triple yields the same key.
+        // - The value has a predictable, compact length (36 characters).
+        var guidBytes = new byte[16];
+        Array.Copy(hashBytes, guidBytes, guidBytes.Length);
+        var guid = new Guid(guidBytes);
+
+        return guid.ToString(); // e.g. "550e8400-e29b-41d4-a716-446655440000"
+    }
 
     private static string ComputeBasketContentHash(IReadOnlyCollection<BasketItem> basketItems)
     {
