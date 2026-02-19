@@ -42,6 +42,9 @@ jobs:
         ESHOP_USE_HTTP_ENDPOINTS: 1
         USERNAME1: bob
         PASSWORD: Pass123$
+        PayPalOptions__ClientId: 'fake-client-id'
+        PayPalOptions__ClientSecret: 'fake-client-secret'
+        PayPalOptions__Environment: 'Sandbox'
     - uses: actions/upload-artifact@v4
       if: always()
       with:
