@@ -135,9 +135,13 @@ public class PayPalCheckoutServiceTests
         Assert.AreEqual(basketId, capturedRequest.BasketId);
         Assert.AreEqual(userId, capturedRequest.UserId);
         Assert.AreEqual("USD", capturedRequest.CurrencyCode);
+
+        Assert.IsFalse(
+            string.IsNullOrWhiteSpace(capturedRequest.IdempotencyKey),
+            "Idempotency key should be non-empty.");
         Assert.IsTrue(
-            capturedRequest.IdempotencyKey.StartsWith("create-user-456-basket-123-", StringComparison.Ordinal),
-            $"Unexpected idempotency key format: {capturedRequest.IdempotencyKey}");
+            Guid.TryParse(capturedRequest.IdempotencyKey, out _),
+            $"Expected GUID-format idempotency key but got: {capturedRequest.IdempotencyKey}");
 
         // Total should be (10.00 * 2) + (5.50 * 1) = 25.50
         Assert.AreEqual(25.50m, capturedRequest.Total);
