@@ -18,6 +18,7 @@ internal static class Extensions
         });
         builder.EnrichNpgsqlDbContext<OrderingContext>();
 
+        services.AddHostedService<OrderingPaypalMigrationScriptHostedService>();
         services.AddMigration<OrderingContext, OrderingContextSeed>();
 
         // Add the integration services that consume the DbContext
