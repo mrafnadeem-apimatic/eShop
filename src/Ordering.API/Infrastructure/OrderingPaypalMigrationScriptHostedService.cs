@@ -2,7 +2,10 @@ namespace eShop.Ordering.API.Infrastructure;
 
 using Npgsql;
 
+#nullable enable
+
 internal sealed class OrderingPaypalMigrationScriptHostedService(
+    IHostEnvironment hostEnvironment,
     IConfiguration configuration,
     ILogger<OrderingPaypalMigrationScriptHostedService> logger) : IHostedService
 {
@@ -17,11 +20,13 @@ internal sealed class OrderingPaypalMigrationScriptHostedService(
             throw new InvalidOperationException("Connection string 'orderingdb' was not configured.");
         }
 
-        var scriptPath = Path.Combine(AppContext.BaseDirectory, ScriptRelativePath);
+        var scriptPath = ResolveScriptPath(hostEnvironment.ContentRootPath);
 
-        if (!File.Exists(scriptPath))
+        if (scriptPath is null)
         {
-            throw new FileNotFoundException("The Paypal migration bootstrap script was not found.", scriptPath);
+            throw new FileNotFoundException(
+                "The Paypal migration bootstrap script was not found.",
+                Path.Combine(AppContext.BaseDirectory, ScriptRelativePath));
         }
 
         var script = await File.ReadAllTextAsync(scriptPath, cancellationToken);
@@ -43,4 +48,16 @@ internal sealed class OrderingPaypalMigrationScriptHostedService(
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    private static string? ResolveScriptPath(string contentRootPath)
+    {
+        var candidatePaths = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, ScriptRelativePath),
+            Path.Combine(contentRootPath, ScriptRelativePath),
+            Path.Combine(Directory.GetCurrentDirectory(), ScriptRelativePath)
+        };
+
+        return candidatePaths.FirstOrDefault(File.Exists);
+    }
 }

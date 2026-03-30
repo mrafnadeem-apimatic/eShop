@@ -40,7 +40,9 @@
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="..\..\artifacts\tmp\sync_ordering_paypal_migration.sql" Link="Sql\sync_ordering_paypal_migration.sql">
+    <None Remove="Sql\sync_ordering_paypal_migration.sql" />
+    <Content Include="Sql\sync_ordering_paypal_migration.sql">
+      <TargetPath>Sql\sync_ordering_paypal_migration.sql</TargetPath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
