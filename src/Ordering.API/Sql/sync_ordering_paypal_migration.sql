@@ -20,6 +20,8 @@ END
 $$;
 
       DO $$
+      DECLARE
+        migration_record_exists boolean;
       BEGIN
         IF EXISTS (
           SELECT 1
@@ -32,14 +34,20 @@ $$;
           FROM information_schema.tables
           WHERE table_schema = 'public'
             AND table_name = '__EFMigrationsHistory'
-        )
-        AND NOT EXISTS (
-          SELECT 1
-          FROM "__EFMigrationsHistory"
-          WHERE "MigrationId" = '20260121120000_AddPaypalOrderIdToOrders'
         ) THEN
-          INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
-          VALUES ('20260121120000_AddPaypalOrderIdToOrders', '10.0.1');
+          EXECUTE '
+            SELECT EXISTS (
+              SELECT 1
+              FROM public."__EFMigrationsHistory"
+              WHERE "MigrationId" = ''20260121120000_AddPaypalOrderIdToOrders''
+            )'
+          INTO migration_record_exists;
+
+          IF NOT migration_record_exists THEN
+            EXECUTE '
+              INSERT INTO public."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+              VALUES (''20260121120000_AddPaypalOrderIdToOrders'', ''10.0.1'')';
+          END IF;
         END IF;
       END
       $$;
