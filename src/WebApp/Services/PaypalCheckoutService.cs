@@ -6,7 +6,7 @@ public class PaypalCheckoutService(HttpClient httpClient)
 {
     private readonly HttpClient _httpClient = httpClient;
 
-    public async Task<CreatePaypalOrderResult?> CreateOrderAsync(
+    public async Task<CreatePaypalOrderResult> CreateOrderAsync(
         decimal total,
         string currency,
         string returnUrl,
@@ -23,24 +23,30 @@ public class PaypalCheckoutService(HttpClient httpClient)
         using var response = await _httpClient.PostAsJsonAsync("/api/paypal/orders", request);
         if (!response.IsSuccessStatusCode)
         {
-            return null;
+            var error = await response.Content.ReadAsStringAsync();
+            throw new PaypalCheckoutException(
+                string.IsNullOrWhiteSpace(error)
+                    ? "Could not start PayPal checkout. Please try again."
+                    : error);
         }
 
         var payload = await response.Content.ReadFromJsonAsync<CreatePaypalOrderResponse>();
         if (payload is null)
         {
-            return null;
+            throw new PaypalCheckoutException("PayPal returned an empty checkout response.");
         }
 
         if (string.IsNullOrWhiteSpace(payload.PaypalOrderId) ||
             string.IsNullOrWhiteSpace(payload.ApprovalLink))
         {
-            return null;
+            throw new PaypalCheckoutException("PayPal checkout did not include an approval link.");
         }
 
         return new CreatePaypalOrderResult(payload.PaypalOrderId, payload.ApprovalLink);
     }
 }
+
+public sealed class PaypalCheckoutException(string message) : Exception(message);
 
 public sealed class CreatePaypalOrderRequest
 {

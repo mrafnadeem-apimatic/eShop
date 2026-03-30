@@ -106,7 +106,6 @@ public class BasketState(
             Items: [.. orderItems],
             PaypalOrderId: checkoutInfo.PaypalOrderId);
         await orderingService.CreateOrder(request, checkoutInfo.RequestId);
-        await DeleteBasketAsync();
     }
 
     private Task NotifyChangeSubscribersAsync()

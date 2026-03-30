@@ -145,14 +145,18 @@
                 returnUrl,
                 cancelUrl);
 
-            if (result is null || string.IsNullOrWhiteSpace(result.Value.ApprovalLink))
+            if (string.IsNullOrWhiteSpace(result.ApprovalLink))
             {
                 errorMessage = "Could not start PayPal checkout. Please try again.";
                 return;
             }
 
             // Interactive navigation to the external PayPal approval URL
-            Nav.NavigateTo(result.Value.ApprovalLink, forceLoad: true);
+            Nav.NavigateTo(result.ApprovalLink, forceLoad: true);
+        }
+        catch (PaypalCheckoutException ex)
+        {
+            errorMessage = ex.Message;
         }
         catch
         {

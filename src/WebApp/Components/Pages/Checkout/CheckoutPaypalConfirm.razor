@@ -9,50 +9,46 @@
 <PageTitle>Confirm Order | AdventureWorks</PageTitle>
 <SectionContent SectionName="page-header-title">Confirm Order</SectionContent>
 
-<div class='checkout'>
+<div class='checkout checkout-shell'>
     <EditForm EditContext="@editContext" FormName="checkout-paypal-confirm" OnSubmit="@HandleSubmitAsync" Enhance>
         <DataAnnotationsValidator />
-        <div class="form">
-            <div class="form-section">
-                <h2>Shipping address</h2>
-                <label>
-                    Address
-                    <InputText @bind-Value="@Info.Street" />
-                    <ValidationMessage For="@(() => Info.Street)" />
-                </label>
-                <div class="form-group">
-                    <div class="form-group-item">
-                        <label>
-                            City
-                            <InputText @bind-Value="@Info.City" />
-                            <ValidationMessage For="@(() => Info.City)" />
-                        </label>
-                    </div>
-                    <div class="form-group-item">
-                        <label>
-                            State
-                            <InputText @bind-Value="@Info.State" />
-                            <ValidationMessage For="@(() => Info.State)" />
-                        </label>
-                    </div>
-                    <div class="form-group-item">
-                        <label>
-                            Zip code
-                            <InputText @bind-Value="@Info.ZipCode" />
-                            <ValidationMessage For="@(() => Info.ZipCode)" />
-                        </label>
-                    </div>
+        <div class="form checkout-form-layout">
+            <div class="form-section form-card checkout-card">
+                <div class="section-heading checkout-card-header">
+                    <span class="section-eyebrow checkout-kicker">Checkout details</span>
+                    <h2>Shipping address</h2>
+                    <p>Review the delivery information before confirming your order.</p>
                 </div>
-                <div>
-                    <label>
+                <div class="field-grid checkout-grid">
+                    <label class="field field-full checkout-field checkout-field-full">
+                        Address
+                        <InputText @bind-Value="@Info.Street" class="checkout-input" />
+                        <ValidationMessage For="@(() => Info.Street)" />
+                    </label>
+                    <label class="field checkout-field">
+                        City
+                        <InputText @bind-Value="@Info.City" class="checkout-input" />
+                        <ValidationMessage For="@(() => Info.City)" />
+                    </label>
+                    <label class="field checkout-field">
+                        State
+                        <InputText @bind-Value="@Info.State" class="checkout-input" />
+                        <ValidationMessage For="@(() => Info.State)" />
+                    </label>
+                    <label class="field checkout-field">
+                        Zip code
+                        <InputText @bind-Value="@Info.ZipCode" class="checkout-input" />
+                        <ValidationMessage For="@(() => Info.ZipCode)" />
+                    </label>
+                    <label class="field field-full checkout-field checkout-field-full">
                         Country
-                        <InputText @bind-Value="@Info.Country" />
+                        <InputText @bind-Value="@Info.Country" class="checkout-input" />
                         <ValidationMessage For="@(() => Info.Country)" />
                     </label>
                 </div>
             </div>
             <div class="form-section">
-                <div class="form-buttons">
+                <div class="form-buttons checkout-actions">
                     <a href="cart" class="button button-secondary"><img role="presentation" src="icons/arrow-left.svg" />Back to the shopping bag</a>
                     <button class="button button-primary" type="submit">Confirm order</button>
                 </div>
