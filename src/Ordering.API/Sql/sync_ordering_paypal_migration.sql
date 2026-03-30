@@ -110,6 +110,17 @@ BEGIN
             );
         END IF;
 
+        IF NOT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'ordering'
+              AND table_name = 'orders'
+              AND column_name = 'PaypalOrderId'
+        ) THEN
+            ALTER TABLE ordering.orders
+                ADD COLUMN "PaypalOrderId" text;
+        END IF;
+
         IF EXISTS (
             SELECT 1
             FROM information_schema.columns
